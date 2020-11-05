@@ -96,12 +96,50 @@ public:
 	virtual operator bool() {
 		return file || dir;
 	}
+	virtual const char * name() {
+		// TODO: much work needed for this...
+		static char zeroterm = 0;
+		filename = &zeroterm;
+		return filename;
+	}
+	virtual boolean isDirectory(void) {
+		return dir != nullptr;
+	}
+	virtual File openNextFile(uint8_t mode=0) {
+		if (!dir) return File();
+		struct lfs_info info;
+		do {
+			memset(&info, 0, sizeof(info)); // is this necessary?
+			if (lfs_dir_read(lfs, dir, &info) <= 0) return File();
+		} while (strcmp(info.name, ".") == 0 || strcmp(info.name, "..") == 0);
+		//Serial.printf("  next name = %s\n", info.name);
+		if (info.type == LFS_TYPE_REG) {
+			lfs_file_t *f = (lfs_file_t *)malloc(sizeof(lfs_file_t));
+			if (!f) return File();
+			if (lfs_file_open(lfs, f, info.name, LFS_O_RDONLY) >= 0) {
+				return File(new LittleFSFile(lfs, f));
+			}
+			free(f);
+		} else { // LFS_TYPE_DIR
+			lfs_dir_t *d = (lfs_dir_t *)malloc(sizeof(lfs_dir_t));
+			if (!d) return File();
+			if (lfs_dir_open(lfs, d, info.name) >= 0) {
+				return File(new LittleFSFile(lfs, d));
+			}
+			free(d);
+		}
+		return File();
+	}
+	virtual void rewindDirectory(void) {
+		if (dir) lfs_dir_rewind(lfs, dir);
+	}
 
 	using Print::write;
 private:
 	lfs_t *lfs;
 	lfs_file_t *file;
 	lfs_dir_t *dir;
+	char *filename;
 	//struct lfs_info info;
 	//char path[256];
 };
@@ -122,7 +160,7 @@ public:
 		if (mode == FILE_READ) {
 			struct lfs_info info;
 			if (lfs_stat(&lfs, filepath, &info) < 0) return File();
-			//Serial.println("LittleFS open got info");
+			//Serial.printf("LittleFS open got info, name=%s\n", info.name);
 			if (info.type == LFS_TYPE_REG) {
 				//Serial.println("  regular file");
 				lfs_file_t *file = (lfs_file_t *)malloc(sizeof(lfs_file_t));
@@ -131,13 +169,14 @@ public:
 					return File(new LittleFSFile(&lfs, file));
 				}
 				free(file);
-			} else {
+			} else { // LFS_TYPE_DIR
 				//Serial.println("  directory");
 				lfs_dir_t *dir = (lfs_dir_t *)malloc(sizeof(lfs_dir_t));
 				if (!dir) return File();
 				if (lfs_dir_open(&lfs, dir, filepath) >= 0) {
 					return File(new LittleFSFile(&lfs, dir));
 				}
+				free(dir);
 			}
 		} else {
 			lfs_file_t *file = (lfs_file_t *)malloc(sizeof(lfs_file_t));

@@ -6,18 +6,21 @@
 class LittleFSFile : public File
 {
 public:
-	LittleFSFile(lfs_t *lfsin, const lfs_file_t *filein) {
+	LittleFSFile(lfs_t *lfsin, lfs_file_t *filein) {
 		lfs = lfsin;
-		memcpy(&file, filein, sizeof(lfs_file_t));
-		is_file = true;
-		is_dir = false;
-		//Serial.printf("  LittleFSFile ctor, this=%x\n", (int)this);
+		file = filein;
+		dir = nullptr;
+		//Serial.printf("  LittleFSFile ctor (file), this=%x\n", (int)this);
 	}
-	LittleFSFile(lfs_t *lfsin, const lfs_dir_t *dirin) {
+	LittleFSFile(lfs_t *lfsin, lfs_dir_t *dirin) {
 		lfs = lfsin;
-		memcpy(&dir, dirin, sizeof(lfs_dir_t));
-		is_dir = true;
-		is_file = false;
+		dir = dirin;
+		file = nullptr;
+		//Serial.printf("  LittleFSFile ctor (dir), this=%x\n", (int)this);
+	}
+	virtual ~LittleFSFile() {
+		//Serial.printf("  LittleFSFile dtor, this=%x\n", (int)this);
+		close();
 	}
 #ifdef FILE_WHOAMI
 	virtual void whoami() {
@@ -27,78 +30,78 @@ public:
 #endif
 	virtual size_t write(const void *buf, size_t size) {
 		//Serial.println("write");
-		if (!is_file) return 0;
+		if (!file) return 0;
 		//Serial.println(" is regular file");
-		return lfs_file_write(lfs, &file, buf, size);
+		return lfs_file_write(lfs, file, buf, size);
 	}
 	virtual int peek() {
 		return -1; // TODO...
 	}
 	virtual int available() {
-		if (!is_file) return 0;
-		lfs_soff_t pos = lfs_file_tell(lfs, &file);
+		if (!file) return 0;
+		lfs_soff_t pos = lfs_file_tell(lfs, file);
 		if (pos < 0) return 0;
-		lfs_soff_t size = lfs_file_size(lfs, &file);
+		lfs_soff_t size = lfs_file_size(lfs, file);
 		if (size < 0) return 0;
 		return size - pos;
 	}
 	virtual void flush() {
-		if (is_file) lfs_file_sync(lfs, &file);
+		if (file) lfs_file_sync(lfs, file);
 	}
 	virtual size_t read(void *buf, size_t nbyte) {
-		if (is_file) {
-			lfs_ssize_t r = lfs_file_read(lfs, &file, buf, nbyte);
+		if (file) {
+			lfs_ssize_t r = lfs_file_read(lfs, file, buf, nbyte);
 			if (r < 0) r = 0;
 			return r;
 		}
 		return 0;
 	}
 	virtual bool seek(uint32_t pos, int mode = SeekSet) {
-		if (is_file) return false;
+		if (!file) return false;
 		int whence;
 		if (mode == SeekSet) whence = LFS_SEEK_SET;
 		else if (mode == SeekCur) whence = LFS_SEEK_CUR;
 		else if (mode == SeekEnd) whence = LFS_SEEK_END;
 		else return false;
-		if (lfs_file_seek(lfs, &file, pos, whence) >= 0) return true;
+		if (lfs_file_seek(lfs, file, pos, whence) >= 0) return true;
 		return false;
 	}
 	virtual uint32_t position() {
-		if (!is_file) return 0;
-		lfs_soff_t pos = lfs_file_tell(lfs, &file);
+		if (!file) return 0;
+		lfs_soff_t pos = lfs_file_tell(lfs, file);
 		if (pos < 0) pos = 0;
 		return pos;
 	}
 	virtual uint32_t size() {
-		if (!is_file) return 0;
-		lfs_soff_t size = lfs_file_size(lfs, &file);
+		if (!file) return 0;
+		lfs_soff_t size = lfs_file_size(lfs, file);
 		if (size < 0) size = 0;
 		return size;
 	}
 	virtual void close() {
-		if (is_file) {
-			Serial.println("  close regular file");
-			lfs_file_close(lfs, &file); // we get stuck here, but why?
-			is_file = false;
+		if (file) {
+			//Serial.printf("  close file, this=%x, lfs=%x", (int)this, (int)lfs);
+			lfs_file_close(lfs, file); // we get stuck here, but why?
+			free(file);
+			file = nullptr;
 		}
-		if (is_dir) {
-			Serial.println("  close directory");
-			lfs_dir_close(lfs, &dir);
-			is_dir = false;
+		if (dir) {
+			//Serial.printf("  close dir, this=%x, lfs=%x", (int)this, (int)lfs);
+			lfs_dir_close(lfs, dir);
+			free(dir);
+			dir = nullptr;
 		}
-		Serial.println("  end of close");
+		//Serial.println("  end of close");
 	}
 	virtual operator bool() {
-		return is_file || is_dir;
+		return file || dir;
 	}
 
 	using Print::write;
 private:
 	lfs_t *lfs;
-	bool is_file;
-	bool is_dir;
-	lfs_file_t file;
-	lfs_dir_t dir;
+	lfs_file_t *file;
+	lfs_dir_t *dir;
 	//struct lfs_info info;
 	//char path[256];
 };
@@ -116,27 +119,32 @@ public:
 	File open(const char *filepath, uint8_t mode = FILE_READ) {
 		//Serial.println("LittleFS open");
 		if (!configured) return File();
-		lfs_file_t file;
 		if (mode == FILE_READ) {
 			struct lfs_info info;
 			if (lfs_stat(&lfs, filepath, &info) < 0) return File();
 			//Serial.println("LittleFS open got info");
 			if (info.type == LFS_TYPE_REG) {
 				//Serial.println("  regular file");
-				if (lfs_file_open(&lfs, &file, filepath, LFS_O_RDONLY) >= 0) {
-					return File(new LittleFSFile(&lfs, &file));
+				lfs_file_t *file = (lfs_file_t *)malloc(sizeof(lfs_file_t));
+				if (!file) return File();
+				if (lfs_file_open(&lfs, file, filepath, LFS_O_RDONLY) >= 0) {
+					return File(new LittleFSFile(&lfs, file));
 				}
+				free(file);
 			} else {
 				//Serial.println("  directory");
-				lfs_dir_t dir;
-				if (lfs_dir_open(&lfs, &dir, filepath) >= 0) {
-					return File(new LittleFSFile(&lfs, &dir));
+				lfs_dir_t *dir = (lfs_dir_t *)malloc(sizeof(lfs_dir_t));
+				if (!dir) return File();
+				if (lfs_dir_open(&lfs, dir, filepath) >= 0) {
+					return File(new LittleFSFile(&lfs, dir));
 				}
 			}
 		} else {
-			if (lfs_file_open(&lfs, &file, filepath, LFS_O_RDWR | LFS_O_CREAT) >= 0) {
-				lfs_file_seek(&lfs, &file, 0, LFS_SEEK_END);	
-				return File(new LittleFSFile(&lfs, &file));
+			lfs_file_t *file = (lfs_file_t *)malloc(sizeof(lfs_file_t));
+			if (!file) return File();
+			if (lfs_file_open(&lfs, file, filepath, LFS_O_RDWR | LFS_O_CREAT) >= 0) {
+				lfs_file_seek(&lfs, file, 0, LFS_SEEK_END);
+				return File(new LittleFSFile(&lfs, file));
 			}
 		}
 		return File();

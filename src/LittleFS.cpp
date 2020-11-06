@@ -10,8 +10,18 @@ PROGMEM static const struct chipinfo {
 	uint16_t progsize;	// page size for programming, in bytes
 	uint32_t erasesize;	// sector size for erasing, in bytes
 	uint32_t chipsize;	// total number of bytes in the chip
+	uint32_t progtime;	// maximum microseconds to wait for page programming
+	uint32_t erasetime;	// maximum microseconds to wait for sector erase
 } known_chips[] = {
-	{{0xEF, 0x40, 0x17}, 24, 256, 4096, 8388608}, // Winbond W25Q64JVSSIQ
+	{{0xEF, 0x40, 0x15}, 24, 256, 4096, 2097152, 3000, 400000}, // Winbond W25Q16JV*IQ/W25Q16FV
+	{{0xEF, 0x40, 0x16}, 24, 256, 4096, 4194304, 3000, 400000}, // Winbond W25Q32JV*IQ/W25Q32FV
+	{{0xEF, 0x40, 0x17}, 24, 256, 4096, 8388608, 3000, 400000}, // Winbond W25Q64JV*IQ/W25Q64FV
+	{{0xEF, 0x40, 0x18}, 24, 256, 4096, 16777216, 3000, 400000}, // Winbond W25Q128JV*IQ/W25Q128FV
+	{{0xEF, 0x70, 0x17}, 24, 256, 4096, 8388608, 3000, 400000}, // Winbond W25Q64JV*IM (DTR)
+	{{0xEF, 0x70, 0x18}, 24, 256, 4096, 16777216, 3000, 400000}, // Winbond W25Q128JV*IM (DTR)
+	{{0x1F, 0x84, 0x01}, 24, 256, 4096, 524288, 2500, 300000}, // Adesto/Atmel AT25SF041
+	{{0x01, 0x40, 0x14}, 24, 256, 4096, 1048576, 5000, 300000}, // Spansion S25FL208K
+
 };
 
 
@@ -68,6 +78,8 @@ bool LittleFS_SPIFlash::begin(uint8_t cspin, SPIClass &spiport)
 	config.lookahead_size = info->progsize;
 	config.name_max = LFS_NAME_MAX;
 	addrbits = info->addrbits;
+	progtime = info->progtime;
+	erasetime = info->erasetime;
 
 	Serial.println("attemping to mount existing media");
 	if (lfs_mount(&lfs, &config) < 0) {
@@ -150,7 +162,7 @@ int LittleFS_SPIFlash::prog(lfs_block_t block, lfs_off_t offset, const void *buf
 	digitalWrite(pin, HIGH);
 	port->endTransaction();
 	//printtbuf(buf, 20);
-	return wait(3000);
+	return wait(progtime);
 }
 
 int LittleFS_SPIFlash::erase(lfs_block_t block)
@@ -169,7 +181,7 @@ int LittleFS_SPIFlash::erase(lfs_block_t block)
 	port->transfer(cmdaddr, 1 + (addrbits >> 3));
 	digitalWrite(pin, HIGH);
 	port->endTransaction();
-	return wait(400000);
+	return wait(erasetime);
 }
 
 int LittleFS_SPIFlash::wait(uint32_t microseconds)

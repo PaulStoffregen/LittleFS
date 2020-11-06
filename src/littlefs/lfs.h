@@ -49,7 +49,7 @@ typedef uint32_t lfs_block_t;
 // respected by other littlefs drivers.
 #ifndef LFS_NAME_MAX
 //#define LFS_NAME_MAX 255
-#define LFS_NAME_MAX 64
+#define LFS_NAME_MAX 39
 #endif
 
 // Maximum size of a file in bytes, may be redefined to limit to support other

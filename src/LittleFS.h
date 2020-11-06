@@ -6,16 +6,18 @@
 class LittleFSFile : public File
 {
 public:
-	LittleFSFile(lfs_t *lfsin, lfs_file_t *filein) {
+	LittleFSFile(lfs_t *lfsin, lfs_file_t *filein, const char *name) {
 		lfs = lfsin;
 		file = filein;
 		dir = nullptr;
+		strcpy(fullpath, name); // TODO: prevent buffer overflow
 		//Serial.printf("  LittleFSFile ctor (file), this=%x\n", (int)this);
 	}
-	LittleFSFile(lfs_t *lfsin, lfs_dir_t *dirin) {
+	LittleFSFile(lfs_t *lfsin, lfs_dir_t *dirin, const char *name) {
 		lfs = lfsin;
 		dir = dirin;
 		file = nullptr;
+		strcpy(fullpath, name); // TODO: prevent buffer overflow
 		//Serial.printf("  LittleFSFile ctor (dir), this=%x\n", (int)this);
 	}
 	virtual ~LittleFSFile() {
@@ -97,10 +99,9 @@ public:
 		return file || dir;
 	}
 	virtual const char * name() {
-		// TODO: much work needed for this...
-		static char zeroterm = 0;
-		filename = &zeroterm;
-		return filename;
+		const char *p = strrchr(fullpath, '/');
+		if (p) return p + 1;
+		return fullpath;
 	}
 	virtual boolean isDirectory(void) {
 		return dir != nullptr;
@@ -112,19 +113,24 @@ public:
 			memset(&info, 0, sizeof(info)); // is this necessary?
 			if (lfs_dir_read(lfs, dir, &info) <= 0) return File();
 		} while (strcmp(info.name, ".") == 0 || strcmp(info.name, "..") == 0);
-		//Serial.printf("  next name = %s\n", info.name);
+		//Serial.printf("  next name = \"%s\"\n", info.name);
+		char pathname[128];
+		// TODO: prevent buffer overflow
+		strcpy(pathname, fullpath);
+		strcat(pathname, "/"); // TODO: do only if fullpath doesn't end with '/'
+		strcat(pathname, info.name);
 		if (info.type == LFS_TYPE_REG) {
 			lfs_file_t *f = (lfs_file_t *)malloc(sizeof(lfs_file_t));
 			if (!f) return File();
-			if (lfs_file_open(lfs, f, info.name, LFS_O_RDONLY) >= 0) {
-				return File(new LittleFSFile(lfs, f));
+			if (lfs_file_open(lfs, f, pathname, LFS_O_RDONLY) >= 0) {
+				return File(new LittleFSFile(lfs, f, pathname));
 			}
 			free(f);
 		} else { // LFS_TYPE_DIR
 			lfs_dir_t *d = (lfs_dir_t *)malloc(sizeof(lfs_dir_t));
 			if (!d) return File();
-			if (lfs_dir_open(lfs, d, info.name) >= 0) {
-				return File(new LittleFSFile(lfs, d));
+			if (lfs_dir_open(lfs, d, pathname) >= 0) {
+				return File(new LittleFSFile(lfs, d, pathname));
 			}
 			free(d);
 		}
@@ -140,8 +146,7 @@ private:
 	lfs_file_t *file;
 	lfs_dir_t *dir;
 	char *filename;
-	//struct lfs_info info;
-	//char path[256];
+	char fullpath[128];
 };
 
 
@@ -166,7 +171,7 @@ public:
 				lfs_file_t *file = (lfs_file_t *)malloc(sizeof(lfs_file_t));
 				if (!file) return File();
 				if (lfs_file_open(&lfs, file, filepath, LFS_O_RDONLY) >= 0) {
-					return File(new LittleFSFile(&lfs, file));
+					return File(new LittleFSFile(&lfs, file, filepath));
 				}
 				free(file);
 			} else { // LFS_TYPE_DIR
@@ -174,7 +179,7 @@ public:
 				lfs_dir_t *dir = (lfs_dir_t *)malloc(sizeof(lfs_dir_t));
 				if (!dir) return File();
 				if (lfs_dir_open(&lfs, dir, filepath) >= 0) {
-					return File(new LittleFSFile(&lfs, dir));
+					return File(new LittleFSFile(&lfs, dir, filepath));
 				}
 				free(dir);
 			}
@@ -183,26 +188,29 @@ public:
 			if (!file) return File();
 			if (lfs_file_open(&lfs, file, filepath, LFS_O_RDWR | LFS_O_CREAT) >= 0) {
 				lfs_file_seek(&lfs, file, 0, LFS_SEEK_END);
-				return File(new LittleFSFile(&lfs, file));
+				return File(new LittleFSFile(&lfs, file, filepath));
 			}
 		}
 		return File();
 	}
 	bool exists(const char *filepath) {
 		if (!configured) return false;
-		return false;
+		struct lfs_info info;
+		if (lfs_stat(&lfs, filepath, &info) < 0) return false;
+		return true;
 	}
 	bool mkdir(const char *filepath) {
 		if (!configured) return false;
-		return false;
+		if (lfs_mkdir(&lfs, filepath) < 0) return false;
+		return true;
 	}
 	bool remove(const char *filepath) {
 		if (!configured) return false;
-		return false;
+		if (lfs_remove(&lfs, filepath) < 0) return false;
+		return true;
 	}
 	bool rmdir(const char *filepath) {
-		if (!configured) return false;
-		return false;
+		return remove(filepath);
 	}
 protected:
 	bool configured;

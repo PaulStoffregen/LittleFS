@@ -1,5 +1,6 @@
 #include <Arduino.h>
 #include <FS.h>
+#include <SPI.h>
 #include "littlefs/lfs.h"
 
 
@@ -227,7 +228,11 @@ class LittleFS_RAM : public LittleFS
 public:
 	LittleFS_RAM() { }
 	bool begin(uint32_t size) {
+#if defined(__IMXRT1062__)
 		return begin(extmem_malloc(size), size);
+#else
+		return begin(malloc(size), size);
+#endif
 	}
 	bool begin(void *ptr, uint32_t size) {
 		//Serial.println("configure "); delay(5);
@@ -249,7 +254,7 @@ public:
 		config.block_cycles = 50;
 		config.cache_size = 64;
 		config.lookahead_size = 64;
-		config.name_max = 64;
+		config.name_max = LFS_NAME_MAX;
 		config.file_max = 0;
 		config.attr_max = 0;
 		if (lfs_format(&lfs, &config) < 0) return false;
@@ -283,5 +288,41 @@ private:
 		return 0;
 	}
 };
+
+
+class LittleFS_SPIFlash : public LittleFS
+{
+public:
+	LittleFS_SPIFlash() {
+		port = nullptr;
+	}
+	bool begin(uint8_t cspin, SPIClass &spiport=SPI);
+private:
+	int read(lfs_block_t block, lfs_off_t offset, void *buf, lfs_size_t size);
+	int prog(lfs_block_t block, lfs_off_t offset, const void *buf, lfs_size_t size);
+	int erase(lfs_block_t block);
+	int wait(uint32_t microseconds);
+	static int static_read(const struct lfs_config *c, lfs_block_t block,
+	  lfs_off_t offset, void *buffer, lfs_size_t size) {
+		//Serial.printf("  flash rd: block=%d, offset=%d, size=%d\n", block, offset, size);
+		return ((LittleFS_SPIFlash *)(c->context))->read(block, offset, buffer, size);
+	}
+	static int static_prog(const struct lfs_config *c, lfs_block_t block,
+	  lfs_off_t offset, const void *buffer, lfs_size_t size) {
+		//Serial.printf("  flash wr: block=%d, offset=%d, size=%d\n", block, offset, size);
+		return ((LittleFS_SPIFlash *)(c->context))->prog(block, offset, buffer, size);
+	}
+	static int static_erase(const struct lfs_config *c, lfs_block_t block) {
+		//Serial.printf("  flash er: block=%d\n", block);
+		return ((LittleFS_SPIFlash *)(c->context))->erase(block);
+	}
+	static int static_sync(const struct lfs_config *c) {
+		return 0;
+	}
+	SPIClass *port;
+	uint8_t pin;
+	uint8_t addrbits;
+};
+
 
 

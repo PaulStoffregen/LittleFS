@@ -315,15 +315,9 @@ bool LittleFS_QSPIFlash::begin()
 	configured = false;
 
 	uint8_t buf[4] = {0, 0, 0, 0};
-	//port->beginTransaction(SPICONFIG);
-	//digitalWrite(pin, LOW);
-	//port->transfer(buf, 4);
-	//digitalWrite(pin, HIGH);
-	//port->endTransaction();
 
 	FLEXSPI2_LUTKEY = FLEXSPI_LUTKEY_VALUE;
 	FLEXSPI2_LUTCR = FLEXSPI_LUTCR_UNLOCK;
-
 	// cmd index 8 = read ID bytes
 	FLEXSPI2_LUT32 = LUT0(CMD_SDR, PINS1, 0x9F) | LUT1(READ_SDR, PINS1, 1);
 	FLEXSPI2_LUT33 = 0;
@@ -355,6 +349,27 @@ bool LittleFS_QSPIFlash::begin()
 	progtime = info->progtime;
 	erasetime = info->erasetime;
 
+	// TODO: configure FlexSPI2 for chip's size
+
+	FLEXSPI2_LUTKEY = FLEXSPI_LUTKEY_VALUE;
+	FLEXSPI2_LUTCR = FLEXSPI_LUTCR_UNLOCK;
+	// cmd index 9 = read QSPI
+	FLEXSPI2_LUT36 = LUT0(CMD_SDR, PINS1, 0x6B) | LUT1(ADDR_SDR, PINS1, 24);
+	FLEXSPI2_LUT37 = LUT0(DUMMY_SDR, PINS4, 8) |  LUT1(READ_SDR, PINS4, 1);
+	FLEXSPI2_LUT38 = 0;
+	// cmd index 10 = write enable
+	FLEXSPI2_LUT40 = LUT0(CMD_SDR, PINS1, 0x06);
+	// cmd index 11 = program QSPI
+	FLEXSPI2_LUT44 = LUT0(CMD_SDR, PINS1, 0x32) | LUT1(ADDR_SDR, PINS1, 24);
+	FLEXSPI2_LUT45 = LUT0(WRITE_SDR, PINS4, 1);
+	// cmd index 12 = sector erase
+	FLEXSPI2_LUT48 = LUT0(CMD_SDR, PINS1, 0x20) | LUT1(ADDR_SDR, PINS1, 24);
+	FLEXSPI2_LUT49 = 0;
+	// cmd index 13 = get status
+	FLEXSPI2_LUT52 = LUT0(CMD_SDR, PINS1, 0x05) | LUT1(READ_SDR, PINS1, 1);
+	FLEXSPI2_LUT53 = 0;
+
+
 	Serial.println("attemping to mount existing media");
 	if (lfs_mount(&lfs, &config) < 0) {
 		Serial.println("couldn't mount media, attemping to format");
@@ -376,18 +391,47 @@ bool LittleFS_QSPIFlash::begin()
 
 int LittleFS_QSPIFlash::read(lfs_block_t block, lfs_off_t offset, void *buf, lfs_size_t size)
 {
-	return LFS_ERR_IO;
+	const uint32_t addr = block * config.block_size + offset;
+	flexspi2_ip_read(9, 0x00800000 + addr, buf, size);
+	// TODO: detect errors, return LFS_ERR_IO
+	//printtbuf(buf, 20);
+	return 0;
 }
 
 int LittleFS_QSPIFlash::prog(lfs_block_t block, lfs_off_t offset, const void *buf, lfs_size_t size)
 {
-	return LFS_ERR_IO;
+	flexspi2_ip_command(10, 0x00800000);
+	const uint32_t addr = block * config.block_size + offset;
+	flexspi2_ip_write(11, 0x00800000 + addr, buf, size);
+	// TODO: detect errors, return LFS_ERR_IO
+	return wait(progtime);
 }
 
 int LittleFS_QSPIFlash::erase(lfs_block_t block)
 {
-	return LFS_ERR_IO;
+	flexspi2_ip_command(10, 0x00800000);
+	const uint32_t addr = block * config.block_size;
+	flexspi2_ip_command(12, 0x00800000 + addr);
+	// TODO: detect errors, return LFS_ERR_IO
+	return wait(erasetime);
 }
+
+int LittleFS_QSPIFlash::wait(uint32_t microseconds)
+{
+	elapsedMicros usec = 0;
+	while (1) {
+		uint8_t status;
+		flexspi2_ip_read(13, 0x00800000, &status, 1);
+		if (!(status & 1)) break;
+		if (usec > microseconds) return LFS_ERR_IO; // timeout
+		yield();
+	}
+	Serial.printf("  waited %u us\n", (unsigned int)usec);
+	return 0; // success
+}
+
+
+
 
 
 

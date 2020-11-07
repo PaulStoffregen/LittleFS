@@ -340,16 +340,16 @@ private:
 	int wait(uint32_t microseconds);
 	static int static_read(const struct lfs_config *c, lfs_block_t block,
 	  lfs_off_t offset, void *buffer, lfs_size_t size) {
-		//Serial.printf("  flash rd: block=%d, offset=%d, size=%d\n", block, offset, size);
+		//Serial.printf("   qspi rd: block=%d, offset=%d, size=%d\n", block, offset, size);
 		return ((LittleFS_QSPIFlash *)(c->context))->read(block, offset, buffer, size);
 	}
 	static int static_prog(const struct lfs_config *c, lfs_block_t block,
 	  lfs_off_t offset, const void *buffer, lfs_size_t size) {
-		//Serial.printf("  flash wr: block=%d, offset=%d, size=%d\n", block, offset, size);
+		//Serial.printf("   qspi wr: block=%d, offset=%d, size=%d\n", block, offset, size);
 		return ((LittleFS_QSPIFlash *)(c->context))->prog(block, offset, buffer, size);
 	}
 	static int static_erase(const struct lfs_config *c, lfs_block_t block) {
-		//Serial.printf("  flash er: block=%d\n", block);
+		//Serial.printf("   qspi er: block=%d\n", block);
 		return ((LittleFS_QSPIFlash *)(c->context))->erase(block);
 	}
 	static int static_sync(const struct lfs_config *c) {

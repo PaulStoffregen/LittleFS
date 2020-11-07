@@ -203,3 +203,201 @@ int LittleFS_SPIFlash::wait(uint32_t microseconds)
 
 
 
+
+
+
+
+
+#define LUT0(opcode, pads, operand) (FLEXSPI_LUT_INSTRUCTION((opcode), (pads), (operand)))
+#define LUT1(opcode, pads, operand) (FLEXSPI_LUT_INSTRUCTION((opcode), (pads), (operand)) << 16)
+#define CMD_SDR         FLEXSPI_LUT_OPCODE_CMD_SDR
+#define ADDR_SDR        FLEXSPI_LUT_OPCODE_RADDR_SDR
+#define READ_SDR        FLEXSPI_LUT_OPCODE_READ_SDR
+#define WRITE_SDR       FLEXSPI_LUT_OPCODE_WRITE_SDR
+#define DUMMY_SDR       FLEXSPI_LUT_OPCODE_DUMMY_SDR
+#define PINS1           FLEXSPI_LUT_NUM_PADS_1
+#define PINS4           FLEXSPI_LUT_NUM_PADS_4
+
+static void flexspi2_ip_command(uint32_t index, uint32_t addr)
+{
+	uint32_t n;
+	FLEXSPI2_IPCR0 = addr;
+	FLEXSPI2_IPCR1 = FLEXSPI_IPCR1_ISEQID(index);
+	FLEXSPI2_IPCMD = FLEXSPI_IPCMD_TRG;
+	while (!((n = FLEXSPI2_INTR) & FLEXSPI_INTR_IPCMDDONE)); // wait
+	if (n & FLEXSPI_INTR_IPCMDERR) {
+		Serial.printf("Error: FLEXSPI2_IPRXFSTS=%08lX\n", FLEXSPI2_IPRXFSTS);
+	}
+	FLEXSPI2_INTR = FLEXSPI_INTR_IPCMDDONE;
+}
+
+static void flexspi2_ip_read(uint32_t index, uint32_t addr, void *data, uint32_t length)
+{
+	uint32_t n;
+	uint8_t *p = (uint8_t *)data;
+	const uint8_t *src;
+
+	FLEXSPI2_IPCR0 = addr;
+	FLEXSPI2_IPCR1 = FLEXSPI_IPCR1_ISEQID(index) | FLEXSPI_IPCR1_IDATSZ(length);
+	FLEXSPI2_IPCMD = FLEXSPI_IPCMD_TRG;
+	while (!((n = FLEXSPI2_INTR) & FLEXSPI_INTR_IPCMDDONE)) {
+		if (n & FLEXSPI_INTR_IPRXWA) {
+			//Serial.print("*");
+			if (length >= 8) {
+				length -= 8;
+				*(uint32_t *)(p+0) = FLEXSPI2_RFDR0;
+				*(uint32_t *)(p+4) = FLEXSPI2_RFDR1;
+				p += 8;
+			} else {
+				src = (const uint8_t *)&FLEXSPI2_RFDR0;
+				while (length > 0) {
+					length--;
+					*p++ = *src++;
+				}
+			}
+			FLEXSPI2_INTR = FLEXSPI_INTR_IPRXWA;
+		}
+	}
+	if (n & FLEXSPI_INTR_IPCMDERR) {
+		Serial.printf("Error: FLEXSPI2_IPRXFSTS=%08lX\r\n", FLEXSPI2_IPRXFSTS);
+	}
+	FLEXSPI2_INTR = FLEXSPI_INTR_IPCMDDONE;
+	//printf(" FLEXSPI2_RFDR0=%08lX\r\n", FLEXSPI2_RFDR0);
+	//if (length > 4) Serial.printf(" FLEXSPI2_RFDR1=%08lX\n", FLEXSPI2_RFDR1);
+	//if (length > 8) Serial.printf(" FLEXSPI2_RFDR1=%08lX\n", FLEXSPI2_RFDR2);
+	//if (length > 16) Serial.printf(" FLEXSPI2_RFDR1=%08lX\n", FLEXSPI2_RFDR3);
+	src = (const uint8_t *)&FLEXSPI2_RFDR0;
+	while (length > 0) {
+		*p++ = *src++;
+		length--;
+	}
+	if (FLEXSPI2_INTR & FLEXSPI_INTR_IPRXWA) FLEXSPI2_INTR = FLEXSPI_INTR_IPRXWA;
+}
+
+static void flexspi2_ip_write(uint32_t index, uint32_t addr, const void *data, uint32_t length)
+{
+	const uint8_t *src;
+	uint32_t n, wrlen;
+
+	FLEXSPI2_IPCR0 = addr;
+	FLEXSPI2_IPCR1 = FLEXSPI_IPCR1_ISEQID(index) | FLEXSPI_IPCR1_IDATSZ(length);
+	src = (const uint8_t *)data;
+	FLEXSPI2_IPCMD = FLEXSPI_IPCMD_TRG;
+	while (!((n = FLEXSPI2_INTR) & FLEXSPI_INTR_IPCMDDONE)) {
+		if (n & FLEXSPI_INTR_IPTXWE) {
+			wrlen = length;
+			if (wrlen > 8) wrlen = 8;
+			if (wrlen > 0) {
+				//Serial.print("%");
+				memcpy((void *)&FLEXSPI2_TFDR0, src, wrlen);
+				src += wrlen;
+				length -= wrlen;
+				FLEXSPI2_INTR = FLEXSPI_INTR_IPTXWE;
+			}
+		}
+	}
+	if (n & FLEXSPI_INTR_IPCMDERR) {
+		Serial.printf("Error: FLEXSPI2_IPRXFSTS=%08lX\r\n", FLEXSPI2_IPRXFSTS);
+	}
+	FLEXSPI2_INTR = FLEXSPI_INTR_IPCMDDONE;
+}
+
+
+
+
+
+
+FLASHMEM
+bool LittleFS_QSPIFlash::begin()
+{
+	Serial.println("QSPI flash begin");
+
+	configured = false;
+
+	uint8_t buf[4] = {0, 0, 0, 0};
+	//port->beginTransaction(SPICONFIG);
+	//digitalWrite(pin, LOW);
+	//port->transfer(buf, 4);
+	//digitalWrite(pin, HIGH);
+	//port->endTransaction();
+
+	FLEXSPI2_LUTKEY = FLEXSPI_LUTKEY_VALUE;
+	FLEXSPI2_LUTCR = FLEXSPI_LUTCR_UNLOCK;
+
+	// cmd index 8 = read ID bytes
+	FLEXSPI2_LUT32 = LUT0(CMD_SDR, PINS1, 0x9F) | LUT1(READ_SDR, PINS1, 1);
+	FLEXSPI2_LUT33 = 0;
+
+	flexspi2_ip_read(8, 0x00800000, buf, 3);
+
+
+	Serial.printf("Flash ID: %02X %02X %02X\n", buf[0], buf[1], buf[2]);
+	const struct chipinfo *info = chip_lookup(buf);
+	if (!info) return false;
+	Serial.printf("Flash size is %.2f Mbyte\n", (float)info->chipsize / 1048576.0f);
+
+	memset(&lfs, 0, sizeof(lfs));
+	memset(&config, 0, sizeof(config));
+	config.context = (void *)this;
+	config.read = &static_read;
+	config.prog = &static_prog;
+	config.erase = &static_erase;
+	config.sync = &static_sync;
+	config.read_size = info->progsize;
+	config.prog_size = info->progsize;
+	config.block_size = info->erasesize;
+	config.block_count = info->chipsize / info->erasesize;
+	config.block_cycles = 400;
+	config.cache_size = info->progsize;
+	config.lookahead_size = info->progsize;
+	config.name_max = LFS_NAME_MAX;
+	addrbits = info->addrbits;
+	progtime = info->progtime;
+	erasetime = info->erasetime;
+
+	Serial.println("attemping to mount existing media");
+	if (lfs_mount(&lfs, &config) < 0) {
+		Serial.println("couldn't mount media, attemping to format");
+		if (lfs_format(&lfs, &config) < 0) {
+			Serial.println("format failed :(");
+			return false;
+		}
+		Serial.println("attemping to mount freshly formatted media");
+		if (lfs_mount(&lfs, &config) < 0) {
+			Serial.println("mount after format failed :(");
+			return false;
+		}
+	}
+	configured = true;
+	Serial.println("success");
+	return true;
+}
+
+
+int LittleFS_QSPIFlash::read(lfs_block_t block, lfs_off_t offset, void *buf, lfs_size_t size)
+{
+	return LFS_ERR_IO;
+}
+
+int LittleFS_QSPIFlash::prog(lfs_block_t block, lfs_off_t offset, const void *buf, lfs_size_t size)
+{
+	return LFS_ERR_IO;
+}
+
+int LittleFS_QSPIFlash::erase(lfs_block_t block)
+{
+	return LFS_ERR_IO;
+}
+
+
+
+
+
+
+
+
+
+
+
+
+

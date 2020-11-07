@@ -328,3 +328,42 @@ private:
 
 
 
+class LittleFS_QSPIFlash : public LittleFS
+{
+public:
+	LittleFS_QSPIFlash() { }
+	bool begin();
+private:
+	int read(lfs_block_t block, lfs_off_t offset, void *buf, lfs_size_t size);
+	int prog(lfs_block_t block, lfs_off_t offset, const void *buf, lfs_size_t size);
+	int erase(lfs_block_t block);
+	int wait(uint32_t microseconds);
+	static int static_read(const struct lfs_config *c, lfs_block_t block,
+	  lfs_off_t offset, void *buffer, lfs_size_t size) {
+		//Serial.printf("  flash rd: block=%d, offset=%d, size=%d\n", block, offset, size);
+		return ((LittleFS_QSPIFlash *)(c->context))->read(block, offset, buffer, size);
+	}
+	static int static_prog(const struct lfs_config *c, lfs_block_t block,
+	  lfs_off_t offset, const void *buffer, lfs_size_t size) {
+		//Serial.printf("  flash wr: block=%d, offset=%d, size=%d\n", block, offset, size);
+		return ((LittleFS_QSPIFlash *)(c->context))->prog(block, offset, buffer, size);
+	}
+	static int static_erase(const struct lfs_config *c, lfs_block_t block) {
+		//Serial.printf("  flash er: block=%d\n", block);
+		return ((LittleFS_QSPIFlash *)(c->context))->erase(block);
+	}
+	static int static_sync(const struct lfs_config *c) {
+		return 0;
+	}
+	uint8_t addrbits;
+	uint32_t progtime;
+	uint32_t erasetime;
+};
+
+
+
+
+
+
+
+

@@ -349,7 +349,8 @@ bool LittleFS_QSPIFlash::begin()
 	progtime = info->progtime;
 	erasetime = info->erasetime;
 
-	// TODO: configure FlexSPI2 for chip's size
+	// configure FlexSPI2 for chip's size
+	FLEXSPI2_FLSHA2CR0 = info->chipsize / 1024;
 
 	FLEXSPI2_LUTKEY = FLEXSPI_LUTKEY_VALUE;
 	FLEXSPI2_LUTCR = FLEXSPI_LUTCR_UNLOCK;
@@ -395,6 +396,7 @@ int LittleFS_QSPIFlash::read(lfs_block_t block, lfs_off_t offset, void *buf, lfs
 	flexspi2_ip_read(9, 0x00800000 + addr, buf, size);
 	// TODO: detect errors, return LFS_ERR_IO
 	//printtbuf(buf, 20);
+	delayMicroseconds(25); // TODO: replace this ugly workaround with real solution...
 	return 0;
 }
 
@@ -402,6 +404,7 @@ int LittleFS_QSPIFlash::prog(lfs_block_t block, lfs_off_t offset, const void *bu
 {
 	flexspi2_ip_command(10, 0x00800000);
 	const uint32_t addr = block * config.block_size + offset;
+	//printtbuf(buf, 20);
 	flexspi2_ip_write(11, 0x00800000 + addr, buf, size);
 	// TODO: detect errors, return LFS_ERR_IO
 	return wait(progtime);

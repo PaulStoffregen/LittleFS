@@ -327,7 +327,7 @@ private:
 };
 
 
-
+#if defined(__IMXRT1062__)
 class LittleFS_QSPIFlash : public LittleFS
 {
 public:
@@ -359,7 +359,14 @@ private:
 	uint32_t progtime;
 	uint32_t erasetime;
 };
-
+#else
+class LittleFS_QSPIFlash : public LittleFS
+{
+public:
+	LittleFS_QSPIFlash() { }
+	bool begin() { return false; }
+};
+#endif
 
 
 

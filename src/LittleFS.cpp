@@ -81,7 +81,7 @@ bool LittleFS_SPIFlash::begin(uint8_t cspin, SPIClass &spiport)
 	progtime = info->progtime;
 	erasetime = info->erasetime;
 
-	Serial.println("attemping to mount existing media");
+	Serial.println("attempting to mount existing media");
 	if (lfs_mount(&lfs, &config) < 0) {
 		Serial.println("couldn't mount media, attemping to format");
 		if (lfs_format(&lfs, &config) < 0) {
@@ -89,7 +89,7 @@ bool LittleFS_SPIFlash::begin(uint8_t cspin, SPIClass &spiport)
 			port = nullptr;
 			return false;
 		}
-		Serial.println("attemping to mount freshly formatted media");
+		Serial.println("attempting to mount freshly formatted media");
 		if (lfs_mount(&lfs, &config) < 0) {
 			Serial.println("mount after format failed :(");
 			port = nullptr;
@@ -105,12 +105,12 @@ FLASHMEM
 bool LittleFS_SPIFlash::format()
 {
 
-	Serial.println("attemping to format existing media");
+	Serial.println("attempting to format existing media");
 	if (lfs_format(&lfs, &config) < 0) {
 		Serial.println("format failed :(");
 		return false;
 	}
-		Serial.println("attemping to mount freshly formatted media");
+		Serial.println("attempting to mount freshly formatted media");
 		if (lfs_mount(&lfs, &config) < 0) {
 			Serial.println("mount after format failed :(");
 			return false;
@@ -398,14 +398,14 @@ bool LittleFS_QSPIFlash::begin()
 	FLEXSPI2_LUT53 = 0;
 
 
-	Serial.println("attemping to mount existing media");
+	Serial.println("attempting to mount existing media");
 	if (lfs_mount(&lfs, &config) < 0) {
 		Serial.println("couldn't mount media, attemping to format");
 		if (lfs_format(&lfs, &config) < 0) {
 			Serial.println("format failed :(");
 			return false;
 		}
-		Serial.println("attemping to mount freshly formatted media");
+		Serial.println("attempting to mount freshly formatted media");
 		if (lfs_mount(&lfs, &config) < 0) {
 			Serial.println("mount after format failed :(");
 			return false;
@@ -420,12 +420,12 @@ FLASHMEM
 bool LittleFS_QSPIFlash::format()
 {
 
-	Serial.println("attemping to format existing media");
+	Serial.println("attempting to format existing media");
 	if (lfs_format(&lfs, &config) < 0) {
 		Serial.println("format failed :(");
 		return false;
 	}
-		Serial.println("attemping to mount freshly formatted media");
+		Serial.println("attempting to mount freshly formatted media");
 		if (lfs_mount(&lfs, &config) < 0) {
 			Serial.println("mount after format failed :(");
 			return false;

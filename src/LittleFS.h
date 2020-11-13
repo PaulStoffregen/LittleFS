@@ -205,6 +205,13 @@ public:
 		if (lfs_mkdir(&lfs, filepath) < 0) return false;
 		return true;
 	}
+	
+	bool rename(const char *oldfilepath, const char *newfilepath) {
+		if (!configured) return false;
+		if (lfs_rename(&lfs, oldfilepath, newfilepath) < 0) return false;
+		return true;
+	}
+	
 	bool remove(const char *filepath) {
 		if (!configured) return false;
 		if (lfs_remove(&lfs, filepath) < 0) return false;
@@ -297,6 +304,7 @@ public:
 		port = nullptr;
 	}
 	bool begin(uint8_t cspin, SPIClass &spiport=SPI);
+	bool format();
 private:
 	int read(lfs_block_t block, lfs_off_t offset, void *buf, lfs_size_t size);
 	int prog(lfs_block_t block, lfs_off_t offset, const void *buf, lfs_size_t size);
@@ -333,6 +341,7 @@ class LittleFS_QSPIFlash : public LittleFS
 public:
 	LittleFS_QSPIFlash() { }
 	bool begin();
+	bool format();
 private:
 	int read(lfs_block_t block, lfs_off_t offset, void *buf, lfs_size_t size);
 	int prog(lfs_block_t block, lfs_off_t offset, const void *buf, lfs_size_t size);
@@ -365,7 +374,6 @@ class LittleFS_QSPIFlash : public LittleFS
 public:
 	LittleFS_QSPIFlash() { }
 	bool begin() { return false; }
-};
 #endif
 
 

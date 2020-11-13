@@ -101,6 +101,25 @@ bool LittleFS_SPIFlash::begin(uint8_t cspin, SPIClass &spiport)
 	return true;
 }
 
+FLASHMEM
+bool LittleFS_SPIFlash::format()
+{
+
+	Serial.println("attemping to format existing media");
+	if (lfs_format(&lfs, &config) < 0) {
+		Serial.println("format failed :(");
+		return false;
+	}
+		Serial.println("attemping to mount freshly formatted media");
+		if (lfs_mount(&lfs, &config) < 0) {
+			Serial.println("mount after format failed :(");
+			return false;
+		}
+	Serial.println("success");
+	return true;
+}
+
+
 
 static void make_command_and_address(uint8_t *buf, uint8_t cmd, uint32_t addr, uint8_t addrbits)
 {
@@ -205,7 +224,7 @@ int LittleFS_SPIFlash::wait(uint32_t microseconds)
 		if (usec > microseconds) return LFS_ERR_IO; // timeout
 		yield();
 	}
-	Serial.printf("  waited %u us\n", (unsigned int)usec);
+	//Serial.printf("  waited %u us\n", (unsigned int)usec);
 	return 0; // success
 }
 
@@ -396,6 +415,25 @@ bool LittleFS_QSPIFlash::begin()
 	Serial.println("success");
 	return true;
 }
+
+FLASHMEM
+bool LittleFS_QSPIFlash::format()
+{
+
+	Serial.println("attemping to format existing media");
+	if (lfs_format(&lfs, &config) < 0) {
+		Serial.println("format failed :(");
+		return false;
+	}
+		Serial.println("attemping to mount freshly formatted media");
+		if (lfs_mount(&lfs, &config) < 0) {
+			Serial.println("mount after format failed :(");
+			return false;
+		}
+	Serial.println("success");
+	return true;
+}
+
 
 
 int LittleFS_QSPIFlash::read(lfs_block_t block, lfs_off_t offset, void *buf, lfs_size_t size)

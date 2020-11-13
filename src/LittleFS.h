@@ -221,7 +221,7 @@ public:
 	uint64_t usedSize() {
 		if (!configured) return 0;
 		int blocks = lfs_fs_size(&lfs);
-		if (blocks < 0 || blocks > config.block_count) return totalSize();
+		if (blocks < 0 || (lfs_size_t)blocks > config.block_count) return totalSize();
 		return blocks * config.block_size;
 	}
 	uint64_t totalSize() {

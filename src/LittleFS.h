@@ -205,13 +205,11 @@ public:
 		if (lfs_mkdir(&lfs, filepath) < 0) return false;
 		return true;
 	}
-	
 	bool rename(const char *oldfilepath, const char *newfilepath) {
 		if (!configured) return false;
 		if (lfs_rename(&lfs, oldfilepath, newfilepath) < 0) return false;
 		return true;
 	}
-	
 	bool remove(const char *filepath) {
 		if (!configured) return false;
 		if (lfs_remove(&lfs, filepath) < 0) return false;
@@ -219,6 +217,16 @@ public:
 	}
 	bool rmdir(const char *filepath) {
 		return remove(filepath);
+	}
+	uint64_t usedSize() {
+		if (!configured) return 0;
+		int blocks = lfs_fs_size(&lfs);
+		if (blocks < 0 || blocks > config.block_count) return totalSize();
+		return blocks * config.block_size;
+	}
+	uint64_t totalSize() {
+		if (!configured) return 0;
+		return config.block_count * config.block_size;
 	}
 protected:
 	bool configured;

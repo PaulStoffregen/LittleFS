@@ -81,7 +81,7 @@ public:
 		}
 		return 0;
 	}
-	virtual bool seek(uint32_t pos, int mode = SeekSet) {
+	virtual bool seek(uint64_t pos, int mode = SeekSet) {
 		if (!file) return false;
 		int whence;
 		if (mode == SeekSet) whence = LFS_SEEK_SET;
@@ -91,13 +91,13 @@ public:
 		if (lfs_file_seek(lfs, file, pos, whence) >= 0) return true;
 		return false;
 	}
-	virtual uint32_t position() {
+	virtual uint64_t position() {
 		if (!file) return 0;
 		lfs_soff_t pos = lfs_file_tell(lfs, file);
 		if (pos < 0) pos = 0;
 		return pos;
 	}
-	virtual uint32_t size() {
+	virtual uint64_t size() {
 		if (!file) return 0;
 		lfs_soff_t size = lfs_file_size(lfs, file);
 		if (size < 0) size = 0;

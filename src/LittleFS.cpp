@@ -284,43 +284,66 @@ static void flexspi2_ip_read(uint32_t index, uint32_t addr, void *data, uint32_t
 {
 	uint32_t n;
 	uint8_t *p = (uint8_t *)data;
-	const uint8_t *src;
 
+	FLEXSPI2_INTR = FLEXSPI_INTR_IPRXWA;
+	// Clear RX FIFO and set watermark to 16 bytes
+	FLEXSPI2_IPRXFCR = FLEXSPI_IPRXFCR_CLRIPRXF | FLEXSPI_IPRXFCR_RXWMRK(1);
 	FLEXSPI2_IPCR0 = addr;
 	FLEXSPI2_IPCR1 = FLEXSPI_IPCR1_ISEQID(index) | FLEXSPI_IPCR1_IDATSZ(length);
 	FLEXSPI2_IPCMD = FLEXSPI_IPCMD_TRG;
-	while (!((n = FLEXSPI2_INTR) & FLEXSPI_INTR_IPCMDDONE)) {
-		if (n & FLEXSPI_INTR_IPRXWA) {
-			//Serial.print("*");
-			if (length >= 8) {
-				length -= 8;
-				*(uint32_t *)(p+0) = FLEXSPI2_RFDR0;
-				*(uint32_t *)(p+4) = FLEXSPI2_RFDR1;
-				p += 8;
-			} else {
-				src = (const uint8_t *)&FLEXSPI2_RFDR0;
-				while (length > 0) {
-					length--;
-					*p++ = *src++;
-				}
+// page 1649 : Reading Data from IP RX FIFO
+// page 1706 : Interrupt Register (INTR)
+// page 1723 : IP RX FIFO Control Register (IPRXFCR)
+// page 1732 : IP RX FIFO Status Register (IPRXFSTS)
+
+	while (1) {
+		if (length >= 16) {
+			if (FLEXSPI2_INTR & FLEXSPI_INTR_IPRXWA) {
+				volatile uint32_t *fifo = &FLEXSPI2_RFDR0;
+				uint32_t a = *fifo++;
+				uint32_t b = *fifo++;
+				uint32_t c = *fifo++;
+				uint32_t d = *fifo++;
+				*(uint32_t *)(p+0) = a;
+				*(uint32_t *)(p+4) = b;
+				*(uint32_t *)(p+8) = c;
+				*(uint32_t *)(p+12) = d;
+				p += 16;
+				length -= 16;
+				FLEXSPI2_INTR = FLEXSPI_INTR_IPRXWA;
 			}
-			FLEXSPI2_INTR = FLEXSPI_INTR_IPRXWA;
+		} else if (length > 0) {
+			if ((FLEXSPI2_IPRXFSTS & 0xFF) >= ((length + 7) >> 3)) {
+				volatile uint32_t *fifo = &FLEXSPI2_RFDR0;
+				while (length >= 4) {
+					*(uint32_t *)(p) = *fifo++;
+					p += 4;
+					length -= 4;
+				}
+				uint32_t a = *fifo;
+				if (length >= 1) {
+					*p++ = a & 0xFF;
+					a = a >> 8;
+				}
+				if (length >= 2) {
+					*p++ = a & 0xFF;
+					a = a >> 8;
+				}
+				if (length >= 3) {
+					*p++ = a & 0xFF;
+					a = a >> 8;
+				}
+				length = 0;
+			}
+		} else {
+			if (FLEXSPI2_INTR & FLEXSPI_INTR_IPCMDDONE) break;
 		}
+		// TODO: timeout...
 	}
 	if (n & FLEXSPI_INTR_IPCMDERR) {
 		Serial.printf("Error: FLEXSPI2_IPRXFSTS=%08lX\r\n", FLEXSPI2_IPRXFSTS);
 	}
 	FLEXSPI2_INTR = FLEXSPI_INTR_IPCMDDONE;
-	//printf(" FLEXSPI2_RFDR0=%08lX\r\n", FLEXSPI2_RFDR0);
-	//if (length > 4) Serial.printf(" FLEXSPI2_RFDR1=%08lX\n", FLEXSPI2_RFDR1);
-	//if (length > 8) Serial.printf(" FLEXSPI2_RFDR1=%08lX\n", FLEXSPI2_RFDR2);
-	//if (length > 16) Serial.printf(" FLEXSPI2_RFDR1=%08lX\n", FLEXSPI2_RFDR3);
-	src = (const uint8_t *)&FLEXSPI2_RFDR0;
-	while (length > 0) {
-		*p++ = *src++;
-		length--;
-	}
-	if (FLEXSPI2_INTR & FLEXSPI_INTR_IPRXWA) FLEXSPI2_INTR = FLEXSPI_INTR_IPRXWA;
 }
 
 static void flexspi2_ip_write(uint32_t index, uint32_t addr, const void *data, uint32_t length)
@@ -464,7 +487,6 @@ int LittleFS_QSPIFlash::read(lfs_block_t block, lfs_off_t offset, void *buf, lfs
 	flexspi2_ip_read(9, 0x00800000 + addr, buf, size);
 	// TODO: detect errors, return LFS_ERR_IO
 	//printtbuf(buf, 20);
-	delayMicroseconds(25); // TODO: replace this ugly workaround with real solution...
 	return 0;
 }
 

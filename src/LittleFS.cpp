@@ -282,7 +282,6 @@ static void flexspi2_ip_command(uint32_t index, uint32_t addr)
 
 static void flexspi2_ip_read(uint32_t index, uint32_t addr, void *data, uint32_t length)
 {
-	uint32_t n;
 	uint8_t *p = (uint8_t *)data;
 
 	FLEXSPI2_INTR = FLEXSPI_INTR_IPRXWA;
@@ -340,7 +339,8 @@ static void flexspi2_ip_read(uint32_t index, uint32_t addr, void *data, uint32_t
 		}
 		// TODO: timeout...
 	}
-	if (n & FLEXSPI_INTR_IPCMDERR) {
+	if (FLEXSPI2_INTR & FLEXSPI_INTR_IPCMDERR) {
+		FLEXSPI2_INTR = FLEXSPI_INTR_IPCMDERR;
 		Serial.printf("Error: FLEXSPI2_IPRXFSTS=%08lX\r\n", FLEXSPI2_IPRXFSTS);
 	}
 	FLEXSPI2_INTR = FLEXSPI_INTR_IPCMDDONE;

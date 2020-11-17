@@ -3,5 +3,5 @@ LittleFS_RAM	KEYWORD1
 LittleFS_SPIFlash	KEYWORD1
 LittleFS_QSPIFlash	KEYWORD1
 LittleFS_Program	KEYWORD1
-format	KEYWORD2
+quickFormat	KEYWORD2
 lowLevelFormat	KEYWORD2

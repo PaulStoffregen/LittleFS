@@ -124,7 +124,7 @@ bool LittleFS_SPIFlash::begin(uint8_t cspin, SPIClass &spiport)
 }
 
 FLASHMEM
-bool LittleFS::format()
+bool LittleFS::quickFormat()
 {
 	if (!configured) return false;
 	if (mounted) {
@@ -181,7 +181,7 @@ bool LittleFS::lowLevelFormat(char progressChar)
 	}
 	free(buffer);
 	if (progressChar) Serial.println();
-	return format();
+	return quickFormat();
 }
 
 static void make_command_and_address(uint8_t *buf, uint8_t cmd, uint32_t addr, uint8_t addrbits)

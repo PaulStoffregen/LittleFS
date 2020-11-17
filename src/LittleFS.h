@@ -192,7 +192,7 @@ public:
 		mounted = false;
 		config.context = nullptr;
 	}
-	bool format();
+	bool quickFormat();
 	bool lowLevelFormat(char progressChar=0);
 	File open(const char *filepath, uint8_t mode = FILE_READ) {
 		//Serial.println("LittleFS open");

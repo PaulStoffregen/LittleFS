@@ -383,6 +383,7 @@ class LittleFS_QSPIFlash : public LittleFS
 public:
 	LittleFS_QSPIFlash() { }
 	bool begin();
+	void initialize();
 private:
 	int read(lfs_block_t block, lfs_off_t offset, void *buf, lfs_size_t size);
 	int prog(lfs_block_t block, lfs_off_t offset, const void *buf, lfs_size_t size);

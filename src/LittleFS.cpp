@@ -500,6 +500,44 @@ int LittleFS_QSPIFlash::erase(lfs_block_t block)
 	return wait(erasetime);
 }
 
+
+void LittleFS_QSPIFlash::initialize() {
+  if(lfs_unmount(&lfs) < 0) {
+	  Serial.println("Can not unmount device");
+  } else {
+	  mounted = false;
+	  flexspi2_ip_command(10, 0x00800000);
+
+	  Serial.println("Erasing... (may take some time)");
+	  uint32_t t = millis();
+	  FLEXSPI2_LUT60 = LUT0(CMD_SDR, PINS1, 0x60); //Chip erase
+	  flexspi2_ip_command(15, 0x00800000);
+
+	  while (wait(500000)) { //waitflash 500 milliseconds
+		Serial.print(".");
+	  }
+
+	  t = millis() - t;
+	  Serial.printf("\nChip erased in %d seconds.\n", t / 1000);
+		Serial.println("attempting to mount existing media");
+		if (lfs_mount(&lfs, &config) < 0) {
+			Serial.println("couldn't mount media, attemping to format");
+			if (lfs_format(&lfs, &config) < 0) {
+				Serial.println("format failed :(");
+				return false;
+			}
+			Serial.println("attempting to mount freshly formatted media");
+			if (lfs_mount(&lfs, &config) < 0) {
+				Serial.println("mount after format failed :(");
+				return false;
+			}
+		}
+		mounted = true;
+		Serial.println("success");  
+  }
+}
+
+
 int LittleFS_QSPIFlash::wait(uint32_t microseconds)
 {
 	elapsedMicros usec = 0;

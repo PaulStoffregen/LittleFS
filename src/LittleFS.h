@@ -404,7 +404,40 @@ class LittleFS_QSPIFlash : public LittleFS
 public:
 	LittleFS_QSPIFlash() { }
 	bool begin() { return false; }
+	bool format() { return false; }
 #endif
+
+
+
+#if defined(__IMXRT1062__)
+class LittleFS_Program : public LittleFS
+{
+public:
+	LittleFS_Program() { }
+	bool begin(uint32_t size);
+	bool format();
+private:
+	static int static_read(const struct lfs_config *c, lfs_block_t block,
+	  lfs_off_t offset, void *buffer, lfs_size_t size);
+	static int static_prog(const struct lfs_config *c, lfs_block_t block,
+	  lfs_off_t offset, const void *buffer, lfs_size_t size);
+	static int static_erase(const struct lfs_config *c, lfs_block_t block);
+	static int static_sync(const struct lfs_config *c) { return 0; }
+	static uint32_t baseaddr;
+};
+#else
+// TODO: implement for Teensy 3.x...
+class LittleFS_QSPIFlash : public LittleFS
+{
+public:
+	LittleFS_QSPIFlash() { }
+	bool begin() { return false; }
+	bool format() { return false; }
+#endif
+
+
+
+
 
 
 

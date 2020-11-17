@@ -531,8 +531,100 @@ int LittleFS_QSPIFlash::wait(uint32_t microseconds)
 
 
 
+#if defined(__IMXRT1062__)
+
+#if defined(ARDUINO_TEENSY40)
+#define FLASH_SIZE  2031616
+#elif defined(ARDUINO_TEENSY41)
+#define FLASH_SIZE  8126464
+#elif defined(ARDUINO_TEENSY_MICROMOD)
+#define FLASH_SIZE 16515072
+#endif
+extern unsigned long _flashimagelen;
+uint32_t LittleFS_Program::baseaddr = 0;
+
+FLASHMEM
+bool LittleFS_Program::begin(uint32_t size)
+{
+	//Serial.println("Program flash begin");
+	configured = false;
+	baseaddr = 0;
+	if (size < 65536) return false;
+	size = size & 0xFFFFF000;
+	const uint32_t program_size = (uint32_t)&_flashimagelen + 4096; // extra 4K for CSF
+	if (program_size >= FLASH_SIZE) return false;
+	const uint32_t available_space = FLASH_SIZE - program_size;
+	//Serial.printf("available_space = %u\n", available_space);
+	if (size > available_space) return false;
+
+	baseaddr = 0x60000000 + FLASH_SIZE - size;
+	//Serial.printf("baseaddr = %x\n", baseaddr);
+
+	memset(&lfs, 0, sizeof(lfs));
+	memset(&config, 0, sizeof(config));
+	config.context = (void *)baseaddr;
+	config.read = &static_read;
+	config.prog = &static_prog;
+	config.erase = &static_erase;
+	config.sync = &static_sync;
+	config.read_size = 128;
+	config.prog_size = 128;
+	config.block_size = 4096;
+	config.block_count = size >> 12;
+	config.block_cycles = 800;
+	config.cache_size = 128;
+	config.lookahead_size = 128;
+	config.name_max = LFS_NAME_MAX;
+
+	//Serial.println("attempting to mount existing media");
+	if (lfs_mount(&lfs, &config) < 0) {
+		//Serial.println("couldn't mount media, attemping to format");
+		if (lfs_format(&lfs, &config) < 0) {
+			//Serial.println("format failed :(");
+			return false;
+		}
+		//Serial.println("attempting to mount freshly formatted media");
+		if (lfs_mount(&lfs, &config) < 0) {
+			//Serial.println("mount after format failed :(");
+			return false;
+		}
+	}
+	configured = true;
+	return true;
+}
+
+int LittleFS_Program::static_read(const struct lfs_config *c, lfs_block_t block,
+	lfs_off_t offset, void *buffer, lfs_size_t size)
+{
+	//Serial.printf("   prog rd: block=%d, offset=%d, size=%d\n", block, offset, size);
+	const uint8_t *p = (uint8_t *)(baseaddr + block * 4096 + offset);
+	memcpy(buffer, p, size);
+	return 0;
+}
+
+// from eeprom.c
+extern "C" void eepromemu_flash_write(void *addr, const void *data, uint32_t len);
+extern "C" void eepromemu_flash_erase_sector(void *addr);
+
+int LittleFS_Program::static_prog(const struct lfs_config *c, lfs_block_t block,
+	lfs_off_t offset, const void *buffer, lfs_size_t size)
+{
+	//Serial.printf("   prog wr: block=%d, offset=%d, size=%d\n", block, offset, size);
+	uint8_t *p = (uint8_t *)(baseaddr + block * 4096 + offset);
+	eepromemu_flash_write(p, buffer, size);
+	return 0;
+}
+
+int LittleFS_Program::static_erase(const struct lfs_config *c, lfs_block_t block)
+{
+	//Serial.printf("   prog er: block=%d\n", block);
+	uint8_t *p = (uint8_t *)(baseaddr + block * 4096);
+	eepromemu_flash_erase_sector(p);
+	return 0;
+}
 
 
+#endif // __IMXRT1062__
 
 
 

@@ -436,7 +436,7 @@ class LittleFS_Program : public LittleFS
 {
 public:
 	LittleFS_Program() { }
-	bool begin() { return false; }
+	bool begin(uint32_t size) { return false; }
 };
 #endif
 

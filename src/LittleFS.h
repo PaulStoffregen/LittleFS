@@ -184,12 +184,13 @@ class LittleFS : public FS
 public:
 	LittleFS() {
 		configured = false;
+		mounted = false;
 		config.context = nullptr;
 	}
 	bool format();
 	File open(const char *filepath, uint8_t mode = FILE_READ) {
 		//Serial.println("LittleFS open");
-		if (!configured) return File();
+		if (!mounted) return File();
 		if (mode == FILE_READ) {
 			struct lfs_info info;
 			if (lfs_stat(&lfs, filepath, &info) < 0) return File();
@@ -222,23 +223,23 @@ public:
 		return File();
 	}
 	bool exists(const char *filepath) {
-		if (!configured) return false;
+		if (!mounted) return false;
 		struct lfs_info info;
 		if (lfs_stat(&lfs, filepath, &info) < 0) return false;
 		return true;
 	}
 	bool mkdir(const char *filepath) {
-		if (!configured) return false;
+		if (!mounted) return false;
 		if (lfs_mkdir(&lfs, filepath) < 0) return false;
 		return true;
 	}
 	bool rename(const char *oldfilepath, const char *newfilepath) {
-		if (!configured) return false;
+		if (!mounted) return false;
 		if (lfs_rename(&lfs, oldfilepath, newfilepath) < 0) return false;
 		return true;
 	}
 	bool remove(const char *filepath) {
-		if (!configured) return false;
+		if (!mounted) return false;
 		if (lfs_remove(&lfs, filepath) < 0) return false;
 		return true;
 	}
@@ -246,17 +247,18 @@ public:
 		return remove(filepath);
 	}
 	uint64_t usedSize() {
-		if (!configured) return 0;
+		if (!mounted) return 0;
 		int blocks = lfs_fs_size(&lfs);
 		if (blocks < 0 || (lfs_size_t)blocks > config.block_count) return totalSize();
 		return blocks * config.block_size;
 	}
 	uint64_t totalSize() {
-		if (!configured) return 0;
+		if (!mounted) return 0;
 		return config.block_count * config.block_size;
 	}
 protected:
 	bool configured;
+	bool mounted;
 	lfs_t lfs;
 	lfs_config config;
 };
@@ -304,6 +306,7 @@ public:
 		//Serial.println("formatted");
 		if (lfs_mount(&lfs, &config) < 0) return false;
 		//Serial.println("mounted atfer format");
+		mounted = true;
 		return true;
 	}
 private:

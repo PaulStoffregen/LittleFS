@@ -119,6 +119,7 @@ bool LittleFS_SPIFlash::begin(uint8_t cspin, SPIClass &spiport)
 			return false;
 		}
 	}
+	mounted = true;
 	Serial.println("success");
 	return true;
 }
@@ -127,7 +128,14 @@ FLASHMEM
 bool LittleFS::format()
 {
 	if (!configured) return false;
-	//lfs_unmount(&lfs); // TODO: is calling lfs_unmount() safe if prior lfs_mount() failed?
+	if (mounted) {
+		Serial.println("unmounting filesystem");
+		lfs_unmount(&lfs);
+		mounted = false;
+		// TODO: What happens if lingering LittleFSFile instances
+		// still have lfs_file_t structs allocated which reference
+		// this previously mounted filesystem?
+	}
 	Serial.println("attempting to format existing media");
 	if (lfs_format(&lfs, &config) < 0) {
 		Serial.println("format failed :(");
@@ -138,6 +146,7 @@ bool LittleFS::format()
 		Serial.println("mount after format failed :(");
 		return false;
 	}
+	mounted = true;
 	Serial.println("success");
 	return true;
 }
@@ -457,6 +466,7 @@ bool LittleFS_QSPIFlash::begin()
 			return false;
 		}
 	}
+	mounted = true;
 	Serial.println("success");
 	return true;
 }
@@ -570,6 +580,7 @@ bool LittleFS_Program::begin(uint32_t size)
 			return false;
 		}
 	}
+	mounted = true;
 	return true;
 }
 

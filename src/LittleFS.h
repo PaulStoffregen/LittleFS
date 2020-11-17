@@ -28,7 +28,11 @@
 
 class LittleFSFile : public File
 {
-public:
+private:
+	// Classes derived from File are never meant to be constructed from
+	// anywhere other than openNextFile() and open() in their parent FS
+	// class.  Only the abstract File class which references these
+	// derived classes is meant to have a public constructor!
 	LittleFSFile(lfs_t *lfsin, lfs_file_t *filein, const char *name) {
 		lfs = lfsin;
 		file = filein;
@@ -43,6 +47,8 @@ public:
 		strlcpy(fullpath, name, sizeof(fullpath));
 		//Serial.printf("  LittleFSFile ctor (dir), this=%x\n", (int)this);
 	}
+	friend class LittleFS;
+public:
 	virtual ~LittleFSFile() {
 		//Serial.printf("  LittleFSFile dtor, this=%x\n", (int)this);
 		close();

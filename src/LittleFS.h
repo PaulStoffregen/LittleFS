@@ -186,6 +186,7 @@ public:
 		configured = false;
 		config.context = nullptr;
 	}
+	bool format();
 	File open(const char *filepath, uint8_t mode = FILE_READ) {
 		//Serial.println("LittleFS open");
 		if (!configured) return File();
@@ -298,11 +299,11 @@ public:
 		config.name_max = LFS_NAME_MAX;
 		config.file_max = 0;
 		config.attr_max = 0;
+		configured = true;
 		if (lfs_format(&lfs, &config) < 0) return false;
 		//Serial.println("formatted");
 		if (lfs_mount(&lfs, &config) < 0) return false;
 		//Serial.println("mounted atfer format");
-		configured = true;
 		return true;
 	}
 private:
@@ -338,7 +339,6 @@ public:
 		port = nullptr;
 	}
 	bool begin(uint8_t cspin, SPIClass &spiport=SPI);
-	bool format();
 private:
 	int read(lfs_block_t block, lfs_off_t offset, void *buf, lfs_size_t size);
 	int prog(lfs_block_t block, lfs_off_t offset, const void *buf, lfs_size_t size);
@@ -375,7 +375,6 @@ class LittleFS_QSPIFlash : public LittleFS
 public:
 	LittleFS_QSPIFlash() { }
 	bool begin();
-	bool format();
 private:
 	int read(lfs_block_t block, lfs_off_t offset, void *buf, lfs_size_t size);
 	int prog(lfs_block_t block, lfs_off_t offset, const void *buf, lfs_size_t size);
@@ -408,7 +407,6 @@ class LittleFS_QSPIFlash : public LittleFS
 public:
 	LittleFS_QSPIFlash() { }
 	bool begin() { return false; }
-	bool format() { return false; }
 };
 #endif
 
@@ -420,7 +418,6 @@ class LittleFS_Program : public LittleFS
 public:
 	LittleFS_Program() { }
 	bool begin(uint32_t size);
-	bool format();
 private:
 	static int static_read(const struct lfs_config *c, lfs_block_t block,
 	  lfs_off_t offset, void *buffer, lfs_size_t size);
@@ -437,7 +434,6 @@ class LittleFS_Program : public LittleFS
 public:
 	LittleFS_Program() { }
 	bool begin() { return false; }
-	bool format() { return false; }
 };
 #endif
 

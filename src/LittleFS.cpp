@@ -102,6 +102,7 @@ bool LittleFS_SPIFlash::begin(uint8_t cspin, SPIClass &spiport)
 	addrbits = info->addrbits;
 	progtime = info->progtime;
 	erasetime = info->erasetime;
+	configured = true;
 
 	Serial.println("attempting to mount existing media");
 	if (lfs_mount(&lfs, &config) < 0) {
@@ -118,29 +119,28 @@ bool LittleFS_SPIFlash::begin(uint8_t cspin, SPIClass &spiport)
 			return false;
 		}
 	}
-	configured = true;
 	Serial.println("success");
 	return true;
 }
 
 FLASHMEM
-bool LittleFS_SPIFlash::format()
+bool LittleFS::format()
 {
-
+	if (!configured) return false;
+	//lfs_unmount(&lfs); // TODO: is calling lfs_unmount() safe if prior lfs_mount() failed?
 	Serial.println("attempting to format existing media");
 	if (lfs_format(&lfs, &config) < 0) {
 		Serial.println("format failed :(");
 		return false;
 	}
-		Serial.println("attempting to mount freshly formatted media");
-		if (lfs_mount(&lfs, &config) < 0) {
-			Serial.println("mount after format failed :(");
-			return false;
-		}
+	Serial.println("attempting to mount freshly formatted media");
+	if (lfs_mount(&lfs, &config) < 0) {
+		Serial.println("mount after format failed :(");
+		return false;
+	}
 	Serial.println("success");
 	return true;
 }
-
 
 
 static void make_command_and_address(uint8_t *buf, uint8_t cmd, uint32_t addr, uint8_t addrbits)
@@ -420,6 +420,7 @@ bool LittleFS_QSPIFlash::begin()
 	addrbits = info->addrbits;
 	progtime = info->progtime;
 	erasetime = info->erasetime;
+	configured = true;
 
 	// configure FlexSPI2 for chip's size
 	FLEXSPI2_FLSHA2CR0 = info->chipsize / 1024;
@@ -456,30 +457,9 @@ bool LittleFS_QSPIFlash::begin()
 			return false;
 		}
 	}
-	configured = true;
 	Serial.println("success");
 	return true;
 }
-
-FLASHMEM
-bool LittleFS_QSPIFlash::format()
-{
-
-	Serial.println("attempting to format existing media");
-	if (lfs_format(&lfs, &config) < 0) {
-		Serial.println("format failed :(");
-		return false;
-	}
-		Serial.println("attempting to mount freshly formatted media");
-		if (lfs_mount(&lfs, &config) < 0) {
-			Serial.println("mount after format failed :(");
-			return false;
-		}
-	Serial.println("success");
-	return true;
-}
-
-
 
 int LittleFS_QSPIFlash::read(lfs_block_t block, lfs_off_t offset, void *buf, lfs_size_t size)
 {
@@ -575,6 +555,7 @@ bool LittleFS_Program::begin(uint32_t size)
 	config.cache_size = 128;
 	config.lookahead_size = 128;
 	config.name_max = LFS_NAME_MAX;
+	configured = true;
 
 	//Serial.println("attempting to mount existing media");
 	if (lfs_mount(&lfs, &config) < 0) {
@@ -589,7 +570,6 @@ bool LittleFS_Program::begin(uint32_t size)
 			return false;
 		}
 	}
-	configured = true;
 	return true;
 }
 

@@ -81,6 +81,11 @@ public:
 		}
 		return 0;
 	}
+	virtual bool truncate(uint64_t size=0) {
+		if (!file) return false;
+		if (lfs_file_truncate(lfs, file, size) >= 0) return true;
+		return false;
+	}
 	virtual bool seek(uint64_t pos, int mode = SeekSet) {
 		if (!file) return false;
 		int whence;

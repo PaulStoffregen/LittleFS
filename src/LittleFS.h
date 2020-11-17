@@ -33,14 +33,14 @@ public:
 		lfs = lfsin;
 		file = filein;
 		dir = nullptr;
-		strncpy(fullpath, name, sizeof(fullpath));
+		strlcpy(fullpath, name, sizeof(fullpath));
 		//Serial.printf("  LittleFSFile ctor (file), this=%x\n", (int)this);
 	}
 	LittleFSFile(lfs_t *lfsin, lfs_dir_t *dirin, const char *name) {
 		lfs = lfsin;
 		dir = dirin;
 		file = nullptr;
-		strncpy(fullpath, name, sizeof(fullpath));
+		strlcpy(fullpath, name, sizeof(fullpath));
 		//Serial.printf("  LittleFSFile ctor (dir), this=%x\n", (int)this);
 	}
 	virtual ~LittleFSFile() {
@@ -138,9 +138,14 @@ public:
 		} while (strcmp(info.name, ".") == 0 || strcmp(info.name, "..") == 0);
 		//Serial.printf("  next name = \"%s\"\n", info.name);
 		char pathname[128];
-		strncpy(pathname, fullpath, sizeof(pathname));
-		strcat(pathname, "/"); // TODO: do only if fullpath doesn't end with '/'
-		strcat(pathname, info.name);
+		strlcpy(pathname, fullpath, sizeof(pathname));
+		size_t len = strlen(pathname);
+		if (len > 0 && pathname[len-1] != '/' && len < sizeof(pathname)-2) {
+			// add trailing '/', if not already present
+			pathname[len++] = '/';
+			pathname[len] = 0;
+		}
+		strlcpy(pathname + len, info.name, sizeof(pathname) - len);
 		if (info.type == LFS_TYPE_REG) {
 			lfs_file_t *f = (lfs_file_t *)malloc(sizeof(lfs_file_t));
 			if (!f) return File();

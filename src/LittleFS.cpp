@@ -501,7 +501,7 @@ int LittleFS_QSPIFlash::erase(lfs_block_t block)
 }
 
 
-void LittleFS_QSPIFlash::initialize() {
+bool LittleFS_QSPIFlash::initialize() {
   if(lfs_unmount(&lfs) < 0) {
 	  Serial.println("Can not unmount device");
   } else {

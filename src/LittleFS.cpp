@@ -65,8 +65,7 @@ bool LittleFS_SPIFlash::begin(uint8_t cspin, SPIClass &spiport)
 	pin = cspin;
 	port = &spiport;
 
-	Serial.println("flash begin");
-
+	//Serial.println("flash begin");
 	configured = false;
 	digitalWrite(pin, HIGH);
 	pinMode(pin, OUTPUT);
@@ -79,10 +78,10 @@ bool LittleFS_SPIFlash::begin(uint8_t cspin, SPIClass &spiport)
 	digitalWrite(pin, HIGH);
 	port->endTransaction();
 
-	Serial.printf("Flash ID: %02X %02X %02X\n", buf[1], buf[2], buf[3]);
+	//Serial.printf("Flash ID: %02X %02X %02X\n", buf[1], buf[2], buf[3]);
 	const struct chipinfo *info = chip_lookup(buf + 1);
 	if (!info) return false;
-	Serial.printf("Flash size is %.2f Mbyte\n", (float)info->chipsize / 1048576.0f);
+	//Serial.printf("Flash size is %.2f Mbyte\n", (float)info->chipsize / 1048576.0f);
 
 	memset(&lfs, 0, sizeof(lfs));
 	memset(&config, 0, sizeof(config));
@@ -104,23 +103,23 @@ bool LittleFS_SPIFlash::begin(uint8_t cspin, SPIClass &spiport)
 	erasetime = info->erasetime;
 	configured = true;
 
-	Serial.println("attempting to mount existing media");
+	//Serial.println("attempting to mount existing media");
 	if (lfs_mount(&lfs, &config) < 0) {
-		Serial.println("couldn't mount media, attemping to format");
+		//Serial.println("couldn't mount media, attemping to format");
 		if (lfs_format(&lfs, &config) < 0) {
-			Serial.println("format failed :(");
+			//Serial.println("format failed :(");
 			port = nullptr;
 			return false;
 		}
-		Serial.println("attempting to mount freshly formatted media");
+		//Serial.println("attempting to mount freshly formatted media");
 		if (lfs_mount(&lfs, &config) < 0) {
-			Serial.println("mount after format failed :(");
+			//Serial.println("mount after format failed :(");
 			port = nullptr;
 			return false;
 		}
 	}
 	mounted = true;
-	Serial.println("success");
+	//Serial.println("success");
 	return true;
 }
 
@@ -129,25 +128,25 @@ bool LittleFS::format()
 {
 	if (!configured) return false;
 	if (mounted) {
-		Serial.println("unmounting filesystem");
+		//Serial.println("unmounting filesystem");
 		lfs_unmount(&lfs);
 		mounted = false;
 		// TODO: What happens if lingering LittleFSFile instances
 		// still have lfs_file_t structs allocated which reference
 		// this previously mounted filesystem?
 	}
-	Serial.println("attempting to format existing media");
+	//Serial.println("attempting to format existing media");
 	if (lfs_format(&lfs, &config) < 0) {
-		Serial.println("format failed :(");
+		//Serial.println("format failed :(");
 		return false;
 	}
-	Serial.println("attempting to mount freshly formatted media");
+	//Serial.println("attempting to mount freshly formatted media");
 	if (lfs_mount(&lfs, &config) < 0) {
-		Serial.println("mount after format failed :(");
+		//Serial.println("mount after format failed :(");
 		return false;
 	}
 	mounted = true;
-	Serial.println("success");
+	//Serial.println("success");
 	return true;
 }
 
@@ -166,13 +165,13 @@ static void make_command_and_address(uint8_t *buf, uint8_t cmd, uint32_t addr, u
 		buf[4] = addr;
 	}
 }
-
-void printtbuf(const void *buf, unsigned int len)
+static void printtbuf(const void *buf, unsigned int len) __attribute__((unused));
+static void printtbuf(const void *buf, unsigned int len)
 {
-	const uint8_t *p = (const uint8_t *)buf;
-	Serial.print("    ");
-	while (len--) Serial.printf("%02X ", *p++);
-	Serial.println();
+	//const uint8_t *p = (const uint8_t *)buf;
+	//Serial.print("    ");
+	//while (len--) Serial.printf("%02X ", *p++);
+	//Serial.println();
 }
 
 int LittleFS_SPIFlash::read(lfs_block_t block, lfs_off_t offset, void *buf, lfs_size_t size)
@@ -284,7 +283,8 @@ static void flexspi2_ip_command(uint32_t index, uint32_t addr)
 	FLEXSPI2_IPCMD = FLEXSPI_IPCMD_TRG;
 	while (!((n = FLEXSPI2_INTR) & FLEXSPI_INTR_IPCMDDONE)); // wait
 	if (n & FLEXSPI_INTR_IPCMDERR) {
-		Serial.printf("Error: FLEXSPI2_IPRXFSTS=%08lX\n", FLEXSPI2_IPRXFSTS);
+		FLEXSPI2_INTR = FLEXSPI_INTR_IPCMDERR;
+		//Serial.printf("Error: FLEXSPI2_IPRXFSTS=%08lX\n", FLEXSPI2_IPRXFSTS);
 	}
 	FLEXSPI2_INTR = FLEXSPI_INTR_IPCMDDONE;
 }
@@ -350,7 +350,7 @@ static void flexspi2_ip_read(uint32_t index, uint32_t addr, void *data, uint32_t
 	}
 	if (FLEXSPI2_INTR & FLEXSPI_INTR_IPCMDERR) {
 		FLEXSPI2_INTR = FLEXSPI_INTR_IPCMDERR;
-		Serial.printf("Error: FLEXSPI2_IPRXFSTS=%08lX\r\n", FLEXSPI2_IPRXFSTS);
+		//Serial.printf("Error: FLEXSPI2_IPRXFSTS=%08lX\r\n", FLEXSPI2_IPRXFSTS);
 	}
 	FLEXSPI2_INTR = FLEXSPI_INTR_IPCMDDONE;
 }
@@ -378,7 +378,8 @@ static void flexspi2_ip_write(uint32_t index, uint32_t addr, const void *data, u
 		}
 	}
 	if (n & FLEXSPI_INTR_IPCMDERR) {
-		Serial.printf("Error: FLEXSPI2_IPRXFSTS=%08lX\r\n", FLEXSPI2_IPRXFSTS);
+		FLEXSPI2_INTR = FLEXSPI_INTR_IPCMDERR;
+		//Serial.printf("Error: FLEXSPI2_IPRXFSTS=%08lX\r\n", FLEXSPI2_IPRXFSTS);
 	}
 	FLEXSPI2_INTR = FLEXSPI_INTR_IPCMDDONE;
 }
@@ -391,7 +392,7 @@ static void flexspi2_ip_write(uint32_t index, uint32_t addr, const void *data, u
 FLASHMEM
 bool LittleFS_QSPIFlash::begin()
 {
-	Serial.println("QSPI flash begin");
+	//Serial.println("QSPI flash begin");
 
 	configured = false;
 
@@ -406,10 +407,10 @@ bool LittleFS_QSPIFlash::begin()
 	flexspi2_ip_read(8, 0x00800000, buf, 3);
 
 
-	Serial.printf("Flash ID: %02X %02X %02X\n", buf[0], buf[1], buf[2]);
+	//Serial.printf("Flash ID: %02X %02X %02X\n", buf[0], buf[1], buf[2]);
 	const struct chipinfo *info = chip_lookup(buf);
 	if (!info) return false;
-	Serial.printf("Flash size is %.2f Mbyte\n", (float)info->chipsize / 1048576.0f);
+	//Serial.printf("Flash size is %.2f Mbyte\n", (float)info->chipsize / 1048576.0f);
 
 	memset(&lfs, 0, sizeof(lfs));
 	memset(&config, 0, sizeof(config));
@@ -453,21 +454,21 @@ bool LittleFS_QSPIFlash::begin()
 	FLEXSPI2_LUT53 = 0;
 
 
-	Serial.println("attempting to mount existing media");
+	//Serial.println("attempting to mount existing media");
 	if (lfs_mount(&lfs, &config) < 0) {
-		Serial.println("couldn't mount media, attemping to format");
+		//Serial.println("couldn't mount media, attemping to format");
 		if (lfs_format(&lfs, &config) < 0) {
-			Serial.println("format failed :(");
+			//Serial.println("format failed :(");
 			return false;
 		}
-		Serial.println("attempting to mount freshly formatted media");
+		//Serial.println("attempting to mount freshly formatted media");
 		if (lfs_mount(&lfs, &config) < 0) {
-			Serial.println("mount after format failed :(");
+			//Serial.println("mount after format failed :(");
 			return false;
 		}
 	}
 	mounted = true;
-	Serial.println("success");
+	//Serial.println("success");
 	return true;
 }
 
@@ -509,7 +510,7 @@ int LittleFS_QSPIFlash::wait(uint32_t microseconds)
 		if (usec > microseconds) return LFS_ERR_IO; // timeout
 		yield();
 	}
-	Serial.printf("  waited %u us\n", (unsigned int)usec);
+	//Serial.printf("  waited %u us\n", (unsigned int)usec);
 	return 0; // success
 }
 

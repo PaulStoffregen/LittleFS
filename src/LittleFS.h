@@ -409,6 +409,7 @@ public:
 	LittleFS_QSPIFlash() { }
 	bool begin() { return false; }
 	bool format() { return false; }
+};
 #endif
 
 
@@ -431,12 +432,13 @@ private:
 };
 #else
 // TODO: implement for Teensy 3.x...
-class LittleFS_QSPIFlash : public LittleFS
+class LittleFS_Program : public LittleFS
 {
 public:
-	LittleFS_QSPIFlash() { }
+	LittleFS_Program() { }
 	bool begin() { return false; }
 	bool format() { return false; }
+};
 #endif
 
 

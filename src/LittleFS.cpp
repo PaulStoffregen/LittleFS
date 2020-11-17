@@ -150,6 +150,39 @@ bool LittleFS::format()
 	return true;
 }
 
+static bool blockIsBlank(struct lfs_config *config, lfs_block_t block, void *readBuf)
+{
+	if (!readBuf) return false;
+	for (lfs_off_t offset=0; offset < config->block_size; offset += config->read_size) {
+		memset(readBuf, 0, config->read_size);
+		config->read(config, block, offset, readBuf, config->read_size);
+		const uint8_t *buf = (uint8_t *)readBuf;
+		for (unsigned int i=0; i < config->read_size; i++) {
+			if (buf[i] != 0xFF) return false;
+		}
+	}
+	return true; // all bytes read as 0xFF
+}
+
+FLASHMEM
+bool LittleFS::lowLevelFormat(char progressChar)
+{
+	if (!configured) return false;
+	if (mounted) {
+		lfs_unmount(&lfs);
+		mounted = false;
+	}
+	void *buffer = malloc(config.read_size);
+	for (unsigned int block=0; block < config.block_count; block++) {
+		if (progressChar) Serial.write(progressChar);
+		if (!blockIsBlank(&config, block, buffer)) {
+			(*config.erase)(&config, block);
+		}
+	}
+	free(buffer);
+	if (progressChar) Serial.println();
+	return format();
+}
 
 static void make_command_and_address(uint8_t *buf, uint8_t cmd, uint32_t addr, uint8_t addrbits)
 {

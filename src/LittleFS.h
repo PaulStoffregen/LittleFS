@@ -193,6 +193,7 @@ public:
 		config.context = nullptr;
 	}
 	bool format();
+	bool lowLevelFormat(char progressChar=0);
 	File open(const char *filepath, uint8_t mode = FILE_READ) {
 		//Serial.println("LittleFS open");
 		if (!mounted) return File();
@@ -287,7 +288,7 @@ public:
 		//Serial.println("configure "); delay(5);
 		configured = false;
 		if (!ptr) return false;
-		memset(ptr, 0, size); // always start with blank slate
+		memset(ptr, 0xFF, size); // always start with blank slate
 		size = size & 0xFFFFFF00;
 		memset(&lfs, 0, sizeof(lfs));
 		memset(&config, 0, sizeof(config));

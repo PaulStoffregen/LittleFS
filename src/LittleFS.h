@@ -33,14 +33,14 @@ public:
 		lfs = lfsin;
 		file = filein;
 		dir = nullptr;
-		strcpy(fullpath, name); // TODO: prevent buffer overflow
+		strncpy(fullpath, name, 128);
 		//Serial.printf("  LittleFSFile ctor (file), this=%x\n", (int)this);
 	}
 	LittleFSFile(lfs_t *lfsin, lfs_dir_t *dirin, const char *name) {
 		lfs = lfsin;
 		dir = dirin;
 		file = nullptr;
-		strcpy(fullpath, name); // TODO: prevent buffer overflow
+		strncpy(fullpath, name, 128);
 		//Serial.printf("  LittleFSFile ctor (dir), this=%x\n", (int)this);
 	}
 	virtual ~LittleFSFile() {
@@ -138,8 +138,7 @@ public:
 		} while (strcmp(info.name, ".") == 0 || strcmp(info.name, "..") == 0);
 		//Serial.printf("  next name = \"%s\"\n", info.name);
 		char pathname[128];
-		// TODO: prevent buffer overflow
-		strcpy(pathname, fullpath);
+		strncpy(pathname, fullpath, 128);
 		strcat(pathname, "/"); // TODO: do only if fullpath doesn't end with '/'
 		strcat(pathname, info.name);
 		if (info.type == LFS_TYPE_REG) {

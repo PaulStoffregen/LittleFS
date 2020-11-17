@@ -534,11 +534,11 @@ int LittleFS_QSPIFlash::wait(uint32_t microseconds)
 #if defined(__IMXRT1062__)
 
 #if defined(ARDUINO_TEENSY40)
-#define FLASH_SIZE  2031616
+#define FLASH_SIZE  0x1F0000
 #elif defined(ARDUINO_TEENSY41)
-#define FLASH_SIZE  8126464
+#define FLASH_SIZE  0x7C0000
 #elif defined(ARDUINO_TEENSY_MICROMOD)
-#define FLASH_SIZE 16515072
+#define FLASH_SIZE  0xFC0000
 #endif
 extern unsigned long _flashimagelen;
 uint32_t LittleFS_Program::baseaddr = 0;
@@ -549,8 +549,8 @@ bool LittleFS_Program::begin(uint32_t size)
 	//Serial.println("Program flash begin");
 	configured = false;
 	baseaddr = 0;
-	if (size < 65536) return false;
-	size = size & 0xFFFFF000;
+	size = size & 0xFFFF0000;
+	if (size == 0) return false;
 	const uint32_t program_size = (uint32_t)&_flashimagelen + 4096; // extra 4K for CSF
 	if (program_size >= FLASH_SIZE) return false;
 	const uint32_t available_space = FLASH_SIZE - program_size;

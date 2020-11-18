@@ -228,7 +228,10 @@ public:
 			lfs_file_t *file = (lfs_file_t *)malloc(sizeof(lfs_file_t));
 			if (!file) return File();
 			if (lfs_file_open(&lfs, file, filepath, LFS_O_RDWR | LFS_O_CREAT) >= 0) {
-				lfs_file_seek(&lfs, file, 0, LFS_SEEK_END);
+				if (mode == FILE_WRITE) {
+					// FILE_WRITE opens at end of file
+					lfs_file_seek(&lfs, file, 0, LFS_SEEK_END);
+				} // else FILE_WRITE_BEGIN
 				return File(new LittleFSFile(&lfs, file, filepath));
 			}
 		}

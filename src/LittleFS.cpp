@@ -172,7 +172,7 @@ bool LittleFS::lowLevelFormat(char progressChar)
 		lfs_unmount(&lfs);
 		mounted = false;
 	}
-	int ii=config.block_count/40;
+	int ii=config.block_count/120;
 	void *buffer = malloc(config.read_size);
 	for (unsigned int block=0; block < config.block_count; block++) {
 		if (progressChar && (0 == block%ii) ) Serial.write(progressChar);

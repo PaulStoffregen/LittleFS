@@ -20,6 +20,7 @@
  * THE SOFTWARE.
  */
 
+#pragma once
 #include <Arduino.h>
 #include <FS.h>
 #include <SPI.h>

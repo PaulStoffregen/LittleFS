@@ -168,6 +168,7 @@ FLASHMEM
 bool LittleFS::lowLevelFormat(char progressChar)
 {
 	if (!configured) return false;
+	checkformat = false;
 	if (mounted) {
 		lfs_unmount(&lfs);
 		mounted = false;
@@ -255,6 +256,21 @@ int LittleFS_SPIFlash::prog(lfs_block_t block, lfs_off_t offset, const void *buf
 int LittleFS_SPIFlash::erase(lfs_block_t block)
 {
 	if (!port) return LFS_ERR_IO;
+	int format = 0;
+	if ( checkformat ) {
+		char readBuf[16];
+		memset(readBuf, 0, 16);
+		read(block, 0, readBuf, 16);
+		for (unsigned int i = 0; i < 16; i++) {
+			if (readBuf[i] != 0xFF) {
+				format = 1;
+				break;
+			}
+		}
+		if ( !format ) {
+			return 0;
+		}
+	}
 	const uint32_t addr = block * config.block_size;
 	uint8_t cmdaddr[5];
 	make_command_and_address(cmdaddr, 0x20, addr, addrbits); // 0x20 = erase sector
@@ -527,6 +543,21 @@ int LittleFS_QSPIFlash::prog(lfs_block_t block, lfs_off_t offset, const void *bu
 
 int LittleFS_QSPIFlash::erase(lfs_block_t block)
 {
+	int format = 0;
+	if ( checkformat ) {
+		char readBuf[16];
+		memset(readBuf, 0, 16);
+		config.read(&config, block, 0, readBuf, 16);
+		for (unsigned int i = 0; i < 16; i++) {
+			if (readBuf[i] != 0xFF) {
+				format = 1;
+				break;
+			}
+		}
+		if ( !format ) {
+			return 0;
+		}
+	}
 	flexspi2_ip_command(10, 0x00800000);
 	const uint32_t addr = block * config.block_size;
 	flexspi2_ip_command(12, 0x00800000 + addr);

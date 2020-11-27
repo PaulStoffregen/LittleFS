@@ -244,11 +244,7 @@ int LittleFS_SPIFlash::prog(lfs_block_t block, lfs_off_t offset, const void *buf
 	digitalWrite(pin, LOW);
 	port->transfer(0x06); // 0x06 = write enable
 	digitalWrite(pin, HIGH);
-#if defined(__IMXRT1062__)
 	delayNanoseconds(250);
-#else
-	asm("nop\n nop\n nop\n nop\n");
-#endif
 	digitalWrite(pin, LOW);
 	port->transfer(cmdaddr, 1 + (addrbits >> 3));
 	port->transfer(buf, nullptr, size);
@@ -270,11 +266,7 @@ int LittleFS_SPIFlash::erase(lfs_block_t block)
 	digitalWrite(pin, LOW);
 	port->transfer(0x06); // 0x06 = write enable
 	digitalWrite(pin, HIGH);
-#if defined(__IMXRT1062__)
 	delayNanoseconds(250);
-#else
-	asm("nop\n nop\n nop\n nop\n");
-#endif
 	digitalWrite(pin, LOW);
 	port->transfer(cmdaddr, 1 + (addrbits >> 3));
 	digitalWrite(pin, HIGH);

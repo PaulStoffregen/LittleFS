@@ -39,8 +39,12 @@ PROGMEM static const struct chipinfo {
 	{{0xEF, 0x40, 0x16}, 24, 256, 4096, 4194304, 3000, 400000}, // Winbond W25Q32JV*IQ/W25Q32FV
 	{{0xEF, 0x40, 0x17}, 24, 256, 4096, 8388608, 3000, 400000}, // Winbond W25Q64JV*IQ/W25Q64FV
 	{{0xEF, 0x40, 0x18}, 24, 256, 4096, 16777216, 3000, 400000}, // Winbond W25Q128JV*IQ/W25Q128FV
+	{{0xEF, 0x40, 0x19}, 32, 256, 4096, 33554432, 3000, 400000}, // Winbond W25Q256JV*IQ
+	{{0xEF, 0x40, 0x20}, 32, 256, 4096, 67108864, 3500, 400000}, // Winbond W25Q512JV*IQ
 	{{0xEF, 0x70, 0x17}, 24, 256, 4096, 8388608, 3000, 400000}, // Winbond W25Q64JV*IM (DTR)
 	{{0xEF, 0x70, 0x18}, 24, 256, 4096, 16777216, 3000, 400000}, // Winbond W25Q128JV*IM (DTR)
+	{{0xEF, 0x70, 0x19}, 32, 256, 4096, 33554432, 3000, 400000}, // Winbond W25Q256JV*IM (DTR)
+	{{0xEF, 0x70, 0x20}, 32, 256, 4096, 67108864, 3500, 400000}, // Winbond W25Q512JV*IM (DTR)
 	{{0x1F, 0x84, 0x01}, 24, 256, 4096, 524288, 2500, 300000}, // Adesto/Atmel AT25SF041
 	{{0x01, 0x40, 0x14}, 24, 256, 4096, 1048576, 5000, 300000}, // Spansion S25FL208K
 
@@ -212,9 +216,10 @@ int LittleFS_SPIFlash::read(lfs_block_t block, lfs_off_t offset, void *buf, lfs_
 {
 	if (!port) return LFS_ERR_IO;
 	const uint32_t addr = block * config.block_size + offset;
+	const uint8_t cmd = (addrbits == 24) ? 0x03 : 0x13; // standard read command
 	uint8_t cmdaddr[5];
 	//Serial.printf("  addrbits=%d\n", addrbits);
-	make_command_and_address(cmdaddr, 0x03, addr, addrbits); // 0x03 = read
+	make_command_and_address(cmdaddr, cmd, addr, addrbits);
 	//printtbuf(cmdaddr, 1 + (addrbits >> 3));
 	memset(buf, 0, size);
 	port->beginTransaction(SPICONFIG);
@@ -231,8 +236,9 @@ int LittleFS_SPIFlash::prog(lfs_block_t block, lfs_off_t offset, const void *buf
 {
 	if (!port) return LFS_ERR_IO;
 	const uint32_t addr = block * config.block_size + offset;
+	const uint8_t cmd = (addrbits == 24) ? 0x02 : 0x12; // page program
 	uint8_t cmdaddr[5];
-	make_command_and_address(cmdaddr, 0x02, addr, addrbits); // 0x02 = page program
+	make_command_and_address(cmdaddr, cmd, addr, addrbits);
 	//printtbuf(cmdaddr, 1 + (addrbits >> 3));
 	port->beginTransaction(SPICONFIG);
 	digitalWrite(pin, LOW);
@@ -256,8 +262,9 @@ int LittleFS_SPIFlash::erase(lfs_block_t block)
 {
 	if (!port) return LFS_ERR_IO;
 	const uint32_t addr = block * config.block_size;
+	const uint8_t cmd = (addrbits == 24) ? 0x20 : 0x21; // erase sector
 	uint8_t cmdaddr[5];
-	make_command_and_address(cmdaddr, 0x20, addr, addrbits); // 0x20 = erase sector
+	make_command_and_address(cmdaddr, cmd, addr, addrbits);
 	//printtbuf(cmdaddr, 1 + (addrbits >> 3));
 	port->beginTransaction(SPICONFIG);
 	digitalWrite(pin, LOW);
@@ -471,18 +478,45 @@ bool LittleFS_QSPIFlash::begin()
 
 	FLEXSPI2_LUTKEY = FLEXSPI_LUTKEY_VALUE;
 	FLEXSPI2_LUTCR = FLEXSPI_LUTCR_UNLOCK;
-	// cmd index 9 = read QSPI
-	FLEXSPI2_LUT36 = LUT0(CMD_SDR, PINS1, 0x6B) | LUT1(ADDR_SDR, PINS1, 24);
-	FLEXSPI2_LUT37 = LUT0(DUMMY_SDR, PINS4, 8) |  LUT1(READ_SDR, PINS4, 1);
-	FLEXSPI2_LUT38 = 0;
+
+	// TODO: is this Winbond specific?  Diable for non-Winbond chips...
+	FLEXSPI2_LUT40 = LUT0(CMD_SDR, PINS1, 0x50);
+	flexspi2_ip_command(10, 0x00800000); // volatile write status enable
+	FLEXSPI2_LUT40 = LUT0(CMD_SDR, PINS1, 0x31) | LUT1(CMD_SDR, PINS1, 0x02);
+	FLEXSPI2_LUT41 = 0;
+	flexspi2_ip_command(10, 0x00800000); // enable quad mode
+
+	if (addrbits == 24) {
+		// cmd index 9 = read QSPI (1-1-4)
+		FLEXSPI2_LUT36 = LUT0(CMD_SDR, PINS1, 0x6B) | LUT1(ADDR_SDR, PINS1, 24);
+		FLEXSPI2_LUT37 = LUT0(DUMMY_SDR, PINS4, 8) |  LUT1(READ_SDR, PINS4, 1);
+		FLEXSPI2_LUT38 = 0;
+		// cmd index 11 = program QSPI (1-1-4)
+		FLEXSPI2_LUT44 = LUT0(CMD_SDR, PINS1, 0x32) | LUT1(ADDR_SDR, PINS1, 24);
+		FLEXSPI2_LUT45 = LUT0(WRITE_SDR, PINS4, 1);
+		// cmd index 12 = sector erase
+		FLEXSPI2_LUT48 = LUT0(CMD_SDR, PINS1, 0x20) | LUT1(ADDR_SDR, PINS1, 24);
+		FLEXSPI2_LUT49 = 0;
+	} else {
+		// cmd index 9 = read QSPI (1-1-4)
+		FLEXSPI2_LUT36 = LUT0(CMD_SDR, PINS1, 0x6C) | LUT1(ADDR_SDR, PINS1, 32);
+		FLEXSPI2_LUT37 = LUT0(DUMMY_SDR, PINS4, 8) |  LUT1(READ_SDR, PINS4, 1);
+		FLEXSPI2_LUT38 = 0;
+		// cmd index 11 = program QSPI (1-1-4)
+		FLEXSPI2_LUT44 = LUT0(CMD_SDR, PINS1, 0x34) | LUT1(ADDR_SDR, PINS1, 32);
+		FLEXSPI2_LUT45 = LUT0(WRITE_SDR, PINS4, 1);
+		// cmd index 12 = sector erase
+		FLEXSPI2_LUT48 = LUT0(CMD_SDR, PINS1, 0x21) | LUT1(ADDR_SDR, PINS1, 32);
+		FLEXSPI2_LUT49 = 0;
+		// cmd index 9 = read SPI (1-1-1)
+		//FLEXSPI2_LUT36 = LUT0(CMD_SDR, PINS1, 0x13) | LUT1(ADDR_SDR, PINS1, 32);
+		//FLEXSPI2_LUT37 = LUT0(READ_SDR, PINS1, 1);
+		// cmd index 11 = program SPI (1-1-1)
+		//FLEXSPI2_LUT44 = LUT0(CMD_SDR, PINS1, 0x12) | LUT1(ADDR_SDR, PINS1, 32);
+		//FLEXSPI2_LUT45 = LUT0(WRITE_SDR, PINS1, 1);
+	}
 	// cmd index 10 = write enable
 	FLEXSPI2_LUT40 = LUT0(CMD_SDR, PINS1, 0x06);
-	// cmd index 11 = program QSPI
-	FLEXSPI2_LUT44 = LUT0(CMD_SDR, PINS1, 0x32) | LUT1(ADDR_SDR, PINS1, 24);
-	FLEXSPI2_LUT45 = LUT0(WRITE_SDR, PINS4, 1);
-	// cmd index 12 = sector erase
-	FLEXSPI2_LUT48 = LUT0(CMD_SDR, PINS1, 0x20) | LUT1(ADDR_SDR, PINS1, 24);
-	FLEXSPI2_LUT49 = 0;
 	// cmd index 13 = get status
 	FLEXSPI2_LUT52 = LUT0(CMD_SDR, PINS1, 0x05) | LUT1(READ_SDR, PINS1, 1);
 	FLEXSPI2_LUT53 = 0;

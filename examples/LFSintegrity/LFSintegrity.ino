@@ -4,8 +4,8 @@
 #define ROOTONLY // NORMAL is NOT DEFINED!
 #define NUMDIRS 28  // When not ROOTONLY must be 1 or more
 
-//#define TEST_RAM
-#define TEST_RAM2
+#define TEST_RAM
+//#define TEST_RAM2
 //#define TEST_SPI
 //#define TEST_QSPI
 //#define TEST_PROG

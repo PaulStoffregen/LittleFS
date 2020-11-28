@@ -1,8 +1,10 @@
 #include <LittleFS.h>
 
-#define HALFCUT  // HALFCUT defined to fill half the disk
-#define ROOTONLY // NORMAL is NOT DEFINED!
+//#define HALFCUT  // HALFCUT defined to fill half the disk
+//#define ROOTONLY // NORMAL is NOT DEFINED!
 #define NUMDIRS 28  // When not ROOTONLY must be 1 or more
+#define MYPSRAM 8	// compile time PSRAM size
+#define MYBLKSIZE 512 // 2048
 
 #define TEST_RAM
 //#define TEST_RAM2
@@ -16,13 +18,13 @@ const int FlashChipSelect = 6; // digital pin for flash chip CS pin
 #ifdef TEST_RAM
 LittleFS_RAM myfs;
 // RUNTIME :: extern "C" uint8_t external_psram_size;
-EXTMEM char buf[16 * 1024 * 1024];	// USE DMAMEM for more memory than ITCM allows - or remove
+EXTMEM char buf[MYPSRAM * 1024 * 1024];	// USE DMAMEM for more memory than ITCM allows - or remove
 //DMAMEM char buf[490000];	// USE DMAMEM for more memory than ITCM allows - or remove
 char szDiskMem[] = "RAM_DISK";
 #elif defined(TEST_RAM2)
 LittleFS_RAM2 myfs;
 // RUNTIME :: extern "C" uint8_t external_psram_size;
-EXTMEM char buf[8 * 1024 * 1024];	// USE DMAMEM for more memory than ITCM allows - or remove
+EXTMEM char buf[MYPSRAM * 1024 * 1024];	// USE DMAMEM for more memory than ITCM allows - or remove
 //DMAMEM char buf[490000];	// USE DMAMEM for more memory than ITCM allows - or remove
 char szDiskMem[] = "RAMD_TWO";
 #elif defined(TEST_SPI)
@@ -41,10 +43,11 @@ char szDiskMem[] = "QSPI_DISK";
 
 File file3;
 
-uint32_t DELSTART = 3; // originally was 3 + higher bias more to writes and larger files
+uint32_t DELSTART = 3; // originally was 3 + higher bias more to writes and larger files - lower odd
 #define SUBADD 1024	// bytes added each pass (*times file number)
 #define BIGADD 2048	// bytes added each pass - bigger will quickly consume more space
 #define MAXNUM 26	// ALPHA A-Z is 26, less for fewer files
+#define MAXFILL 66000	// ZERO to disable :: Prevent iterations from over filling - require this much free
 #define DELDELAY 0 	// delay before DEL files : delayMicroseconds
 #define ADDDELAY 0 	// delay on ADD FILE : delayMicroseconds
 
@@ -65,7 +68,7 @@ void setup() {
 #ifdef TEST_RAM
 	if (!myfs.begin(buf, sizeof(buf))) {
 #elif defined(TEST_RAM2)
-	if (!myfs.begin(buf, sizeof(buf))) {
+	if (!myfs.begin(buf, sizeof(buf), MYBLKSIZE )) {
 #elif defined(TEST_SPI)
 #ifdef FORMATSPI
 	if (!myfs.begin( FlashChipSelect )) {
@@ -435,6 +438,11 @@ uint32_t fileCycle(const char *dir) {
 		Serial.println();
 	}
 	else {
+		if ( myfs.totalSize() - myfs.usedSize() < MAXFILL ) {
+			Serial.printf( "\tXXX\tXXX\tXXX\tXXX\tSIZE WARNING { MAXFILL } \n" );
+			cCnt=DELSTART;
+			return cCnt;	// EARLY EXIT
+		}
 		if ( nNum == 0 ) {
 			nNum = 10;
 			cCnt++;
@@ -538,6 +546,7 @@ void readVerify( char szPath[], char chNow ) {
 }
 
 bool bigVerify( char szPath[], char chNow ) {
+	uint32_t timeMe = micros();
 	file3 = myfs.open(szPath);
 	if ( 0 == file3 ) {
 		return false;
@@ -564,8 +573,11 @@ bool bigVerify( char szPath[], char chNow ) {
 		checkInput( 1 );	// PAUSE on CmdLine
 	}
 	else
-		Serial.printf( "\tGOOD! >>  bytes %lu\n", ii );
+		Serial.printf( "\tGOOD! >>  bytes %lu\t", ii );
 	file3.close();
+	timeMe = micros() - timeMe;
+	Serial.printf( "Big read&compare KBytes per second %5.2f \n", ii / (timeMe / 1000.0) );
+	if ( 0 == ii ) return false;
 	return true;
 }
 
@@ -579,11 +591,11 @@ void bigFile( int doThis ) {
 		do {
 			fileID++;
 			myFile[1] = fileID;
-			if ( bigVerify( myFile, fileID) ) {
+			if ( myfs.exists(myFile) && bigVerify( myFile, fileID) ) {
 				filecount--;
 				myfs.remove(myFile);
 			}
-			else break; // now more of these
+			else break; // no more of these
 		} while ( 1 );
 	}
 	else {	// FILL DISK
@@ -620,14 +632,18 @@ void bigFile( int doThis ) {
 		xx -= toWrite;
 		file3.close();
 		timeMe = micros() - timeMe;
-		if ( resW < 0 ) {
-			Serial.printf( "\nBig write ERR# %i 0x%X \n", resW, resW );
+		if ( file3.size() > 0 ) {
+			filecount++;
+			file3 = myfs.open(myFile, FILE_WRITE);
+			Serial.printf( "\nBig write %s took %5.2f Sec for %lu Bytes : file3.size()=%llu", myFile , timeMe / 1000000.0, xx, file3.size() );
+			file3.close();
 		}
-		file3 = myfs.open(myFile, FILE_WRITE);
-		if ( file3.size() > 0 ) filecount++;
-		Serial.printf( "\nBig write %s took %5.2f Sec for %lu Bytes : file3.size()=%llu", myFile , timeMe / 1000000.0, xx, file3.size() );
-		file3.close();
 		Serial.printf( "\n\tBig write KBytes per second %5.2f \n", xx / (timeMe / 1000.0) );
 		Serial.printf("\nBytes Used: %llu, Bytes Total:%llu\n", myfs.usedSize(), myfs.totalSize());
+		if ( resW < 0 ) {
+			Serial.printf( "\nBig write ERR# %i 0x%X \n", resW, resW );
+			errsLFS++;
+			myfs.remove(myFile);
+		}
 	}
 }

@@ -4,9 +4,9 @@
 //#define ROOTONLY // NORMAL is NOT DEFINED!
 #define NUMDIRS 28  // When not ROOTONLY must be 1 or more
 
-//#define TEST_RAM
+#define TEST_RAM
 //#define TEST_SPI
-#define TEST_QSPI
+//#define TEST_QSPI
 //#define TEST_PROG
 
 // Set for SPI usage
@@ -15,7 +15,7 @@ const int FlashChipSelect = 6; // digital pin for flash chip CS pin
 #ifdef TEST_RAM
 LittleFS_RAM myfs;
 // RUNTIME :: extern "C" uint8_t external_psram_size;
-EXTMEM char buf[16 * 1024 * 1024];	// USE DMAMEM for more memory than ITCM allows - or remove
+EXTMEM char buf[8 * 1024 * 1024];	// USE DMAMEM for more memory than ITCM allows - or remove
 //DMAMEM char buf[490000];	// USE DMAMEM for more memory than ITCM allows - or remove
 char szDiskMem[] = "RAM_DISK";
 #elif defined(TEST_SPI)
@@ -205,7 +205,8 @@ void parseCmd( char chIn ) { // pass chIn == '?' for help
 	case '8':
 	case '9':
 		loopLimit = chIn - '0';
-		lastTime = micros();
+		if ( chIn != '0' )	// Preserve elapsed time on Error or STOP command
+			lastTime = micros();
 		break;
 	case 'b':
 		bigFile( 0 ); // delete

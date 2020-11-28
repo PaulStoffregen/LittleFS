@@ -1,10 +1,11 @@
 #include <LittleFS.h>
 
 #define HALFCUT  // HALFCUT defined to fill half the disk
-//#define ROOTONLY // NORMAL is NOT DEFINED!
+#define ROOTONLY // NORMAL is NOT DEFINED!
 #define NUMDIRS 28  // When not ROOTONLY must be 1 or more
 
-#define TEST_RAM
+//#define TEST_RAM
+#define TEST_RAM2
 //#define TEST_SPI
 //#define TEST_QSPI
 //#define TEST_PROG
@@ -15,9 +16,15 @@ const int FlashChipSelect = 6; // digital pin for flash chip CS pin
 #ifdef TEST_RAM
 LittleFS_RAM myfs;
 // RUNTIME :: extern "C" uint8_t external_psram_size;
-EXTMEM char buf[8 * 1024 * 1024];	// USE DMAMEM for more memory than ITCM allows - or remove
+EXTMEM char buf[16 * 1024 * 1024];	// USE DMAMEM for more memory than ITCM allows - or remove
 //DMAMEM char buf[490000];	// USE DMAMEM for more memory than ITCM allows - or remove
 char szDiskMem[] = "RAM_DISK";
+#elif defined(TEST_RAM2)
+LittleFS_RAM2 myfs;
+// RUNTIME :: extern "C" uint8_t external_psram_size;
+EXTMEM char buf[8 * 1024 * 1024];	// USE DMAMEM for more memory than ITCM allows - or remove
+//DMAMEM char buf[490000];	// USE DMAMEM for more memory than ITCM allows - or remove
+char szDiskMem[] = "RAMD_TWO";
 #elif defined(TEST_SPI)
 //const int FlashChipSelect = 21; // Arduino 101 built-in SPI Flash
 #define FORMATSPI
@@ -56,6 +63,8 @@ void setup() {
 	Serial.println("LittleFS Test : File Integrity"); delay(5);
 
 #ifdef TEST_RAM
+	if (!myfs.begin(buf, sizeof(buf))) {
+#elif defined(TEST_RAM2)
 	if (!myfs.begin(buf, sizeof(buf))) {
 #elif defined(TEST_SPI)
 #ifdef FORMATSPI
@@ -528,18 +537,54 @@ void readVerify( char szPath[], char chNow ) {
 	file3.close();
 }
 
+bool bigVerify( char szPath[], char chNow ) {
+	file3 = myfs.open(szPath);
+	if ( 0 == file3 ) {
+		return false;
+	}
+	char mm;
+	uint32_t ii = 0;
+	Serial.printf( "\tVerify %s bytes %llu ... ", szPath, file3.size() );
+	while ( file3.available() ) {
+		file3.read( &mm , 1 );
+		rdCnt++;
+		ii++;
+		if ( chNow != mm ) {
+			Serial.printf( "<Bad Byte!  %c! = %c [0x%X] @%u\n", chNow, mm, mm, ii );
+			parseCmd( '0' );
+			errsLFS++;
+			checkInput( 1 );
+			break;
+		}
+	}
+	if (ii != file3.size()) {
+		Serial.printf( "\n\tRead Count fail! :: read %u != f.size %llu\n", ii, file3.size() );
+		parseCmd( '0' );
+		errsLFS++;
+		checkInput( 1 );	// PAUSE on CmdLine
+	}
+	else
+		Serial.printf( "\tGOOD! >>  bytes %lu\n", ii );
+	file3.close();
+	return true;
+}
+
 
 void bigFile( int doThis ) {
 	char myFile[] = "/0_bigfile.txt";
 	char fileID = '0' - 1;
 
 	if ( 0 == doThis ) {	// delete File
+		Serial.printf( "\nDelete with read verify all #bigfile's\n");
 		do {
 			fileID++;
 			myFile[1] = fileID;
-			filecount--;
-		} while ( myfs.remove(myFile) );
-		filecount++;
+			if ( bigVerify( myFile, fileID) ) {
+				filecount--;
+				myfs.remove(myFile);
+			}
+			else break; // now more of these
+		} while ( 1 );
 	}
 	else {	// FILL DISK
 		lfs_ssize_t resW = 1;

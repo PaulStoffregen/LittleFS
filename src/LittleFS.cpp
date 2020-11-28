@@ -105,6 +105,7 @@ bool LittleFS_SPIFlash::begin(uint8_t cspin, SPIClass &spiport)
 	addrbits = info->addrbits;
 	progtime = info->progtime;
 	erasetime = info->erasetime;
+	checkformat = nullptr;
 	configured = true;
 
 	//Serial.println("attempting to mount existing media");
@@ -168,10 +169,47 @@ static bool blockIsBlank(struct lfs_config *config, lfs_block_t block, void *rea
 	return true; // all bytes read as 0xFF
 }
 
+#define DEBUGCF
+FLASHMEM
+bool LittleFS::checkFormat(bool readCheck) {
+	if ( !configured || !readCheck ) {
+		if ( checkformat != nullptr) {
+			free( checkformat );
+		}
+		checkformat = nullptr;
+	}
+	else if ( readCheck ) {
+		uint32_t iiblk = 1+(config.block_count /8);
+		if ( checkformat == nullptr) checkformat = (uint8_t *)malloc( iiblk );
+		if ( checkformat == nullptr) return (checkformat != nullptr);
+		memset(checkformat, 0, iiblk);
+		uint8_t jjbit;
+		void *buffer = malloc(config.read_size);
+#ifdef DEBUGCF
+			uint32_t *fake = (uint32_t *)checkformat;
+			int ff=0;
+#endif
+		for (unsigned int block=0; block < config.block_count; block++) {
+			if (blockIsBlank(&config, block, buffer)) {
+				iiblk = block/8;
+				jjbit = 1<<(block%8);
+				checkformat[iiblk] = checkformat[iiblk] | jjbit;
+			}
+#ifdef DEBUGCF
+			if ( (block/8)>3 && (0==(block/8)%4) && 0==block%8 ) Serial.printf( "\t0x%lx", fake[ff++]); // bugbug DEBUG
+			if ( !((block/8)%40) && 0==block%8 ) Serial.printf( "\n%u", block ); // bugbug DEBUG
+#endif
+		}
+		free(buffer);
+	}
+	return checkformat != nullptr;
+}
+
 FLASHMEM
 bool LittleFS::lowLevelFormat(char progressChar)
 {
 	if (!configured) return false;
+	checkFormat( false );
 	if (mounted) {
 		lfs_unmount(&lfs);
 		mounted = false;
@@ -257,6 +295,14 @@ int LittleFS_SPIFlash::prog(lfs_block_t block, lfs_off_t offset, const void *buf
 int LittleFS_SPIFlash::erase(lfs_block_t block)
 {
 	if (!port) return LFS_ERR_IO;
+	if ( checkformat != nullptr) {
+		uint32_t iiblk = block/8;
+		uint8_t jjbit = 1<<(block%8);
+		if ( checkformat[iiblk] & jjbit ) { // was set as formatted, unset as erase precedes usage
+			checkformat[iiblk] &= ~jjbit;
+			return 0;
+		}
+	}
 	const uint32_t addr = block * config.block_size;
 	const uint8_t cmd = (addrbits == 24) ? 0x20 : 0x21; // erase sector
 	uint8_t cmdaddr[5];
@@ -463,6 +509,7 @@ bool LittleFS_QSPIFlash::begin()
 	addrbits = info->addrbits;
 	progtime = info->progtime;
 	erasetime = info->erasetime;
+	checkformat = nullptr;
 	configured = true;
 
 	// configure FlexSPI2 for chip's size
@@ -553,6 +600,14 @@ int LittleFS_QSPIFlash::prog(lfs_block_t block, lfs_off_t offset, const void *bu
 
 int LittleFS_QSPIFlash::erase(lfs_block_t block)
 {
+	if ( checkformat != nullptr) {
+		uint32_t iiblk = block/8;
+		uint8_t jjbit = 1<<(block%8);
+		if ( checkformat[iiblk] & jjbit ) { // was set as formatted, unset as erase precedes usage
+			checkformat[iiblk] &= ~jjbit;
+			return 0;
+		}
+	}
 	flexspi2_ip_command(10, 0x00800000);
 	const uint32_t addr = block * config.block_size;
 	flexspi2_ip_command(12, 0x00800000 + addr);
@@ -626,6 +681,7 @@ bool LittleFS_Program::begin(uint32_t size)
 	config.cache_size = 128;
 	config.lookahead_size = 128;
 	config.name_max = LFS_NAME_MAX;
+	checkformat = nullptr;
 	configured = true;
 
 	//Serial.println("attempting to mount existing media");

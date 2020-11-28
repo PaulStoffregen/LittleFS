@@ -197,10 +197,12 @@ public:
 	LittleFS() {
 		configured = false;
 		mounted = false;
+		checkformat = nullptr;
 		config.context = nullptr;
 	}
 	bool quickFormat();
 	bool lowLevelFormat(char progressChar=0);
+	bool checkFormat(bool readCheck);
 	File open(const char *filepath, uint8_t mode = FILE_READ) {
 		//Serial.println("LittleFS open");
 		if (!mounted) return File();
@@ -275,6 +277,7 @@ public:
 protected:
 	bool configured;
 	bool mounted;
+	uint8_t *checkformat;
 	lfs_t lfs;
 	lfs_config config;
 };
@@ -323,6 +326,7 @@ public:
 		if (lfs_mount(&lfs, &config) < 0) return false;
 		//Serial.println("mounted atfer format");
 		mounted = true;
+		checkformat = nullptr;
 		return true;
 	}
 private:

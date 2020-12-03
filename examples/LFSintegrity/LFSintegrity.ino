@@ -1,19 +1,22 @@
 #include <LittleFS.h>
 
-//#define HALFCUT  // HALFCUT defined to fill half the disk
-//#define ROOTONLY // NORMAL is NOT DEFINED!
+#define RELEASE // Use this to exclude defragster new functions not in Beta5
+
+#define HALFCUT  // HALFCUT defined to fill half the disk
+#define ROOTONLY // NORMAL is NOT DEFINED!
 #define NUMDIRS 28  // When not ROOTONLY must be 1 or more
 #define MYPSRAM 8	// compile time PSRAM size
-#define MYBLKSIZE 512 // 2048
+#define MYBLKSIZE 2048 // 2048
 
-#define TEST_RAM
-//#define TEST_RAM2
-//#define TEST_SPI
+//#define TEST_RAM
+//#define TEST_RAM2 // Defragster LittleFS only - not in RELEASE
+#define TEST_SPI
 //#define TEST_QSPI
 //#define TEST_PROG
 
 // Set for SPI usage
 const int FlashChipSelect = 6; // digital pin for flash chip CS pin
+
 
 #ifdef TEST_RAM
 LittleFS_RAM myfs;
@@ -54,6 +57,7 @@ uint32_t DELSTART = 3; // originally was 3 + higher bias more to writes and larg
 const uint32_t lowOffset = 'a' - 'A';
 const uint32_t lowShift = 13;
 uint32_t errsLFS = 0;
+uint32_t warnLFS = 0;
 uint32_t lCnt = 0;
 uint32_t LoopCnt = 0;
 uint32_t rdCnt = 0;
@@ -114,6 +118,7 @@ bool pauseDir = false;  // Start Pause on each off
 bool showDir =  false;  // false Start Dir on each off
 bool bDirVerify =  false;  // false Start Dir on each off
 bool bCheckFormat =  false;  // false CheckFormat
+bool bCheckUsed =  false;  // false CheckUsed
 void loop() {
 	char szDir[16];
 	LoopCnt++;
@@ -140,7 +145,7 @@ void loop() {
 		checkInput( 1 );
 }
 
-char szInputs[] = "0123456789RdchkFqvplmuxBbZ+-?";
+char szInputs[] = "0123456789RdchkFqvplmuxBbZztyYf+-?";
 uint32_t lastTime;
 void checkInput( int step ) { // prompt for input without user input with step != 0
 	uint32_t nowTime = micros();
@@ -189,17 +194,23 @@ void parseCmd( char chIn ) { // pass chIn == '?' for help
  'h' Hundred loops\n\
  'k' Thousand loops\n\
  'F' LittleFS_ Low Level Format Disk \n\
+ 'f'__LittleFS::formatUnused( ALL ) : DATA PRESERVED \n\
  'q' LittleFS_ Quick Format Disk \n\
  'v' Verbose All Dir Prints - TOGGLE\n\
  'p' Pause after all Dir prints - TOGGLE\n\
  'l' Show count of loop()'s, Bytes Read,Written\n\
- 'm' Make ROOT dirs (needed after format !ROOTONLY)\n\
+ 'm' Make ROOT dirs (needed after q/F format !ROOTONLY)\n\
  'u' Update Filecount\n\
  'x' Directory filecount verify - TOGGLE\n\
- 'Z' ZIPPY write after 'F'ormat - TOGGLE\n\
+ 'z'__ZIPPY OFF : write after 'F'ormat\n\
+ 'Z'__ZIPPY ON : write after 'F'ormat\n\
+ 't'__Traverse lfs used data blocks\n\
  '+' more add to delete cycles\n\
  '-' fewer add to delete cycles\n\
- '?' Help list" );
+ 'y'__reclaim 1 block :: myfs.formatUnused( 1 )\n\
+ 'Y'__reclaim 5 blocks :: myfs.formatUnused( 15 )\n\
+ '?' Help list\n\
+ >> ITEMS '~'__ : double underbar : NO FUNCTION w/ RELEASE <<" );
 		break;
 	case 'R':
 		Serial.print(" RESTART Teensy ...");
@@ -256,6 +267,7 @@ void parseCmd( char chIn ) { // pass chIn == '?' for help
 		timeMe = micros() - timeMe;
 		Serial.printf( "\n Done Formatting Low Level in %lu us.\n", timeMe );
 		errsLFS = 0; // No Errors on new Format
+		warnLFS = 0; // No warning on new Format
 		bCheckFormat  = false;
 		parseCmd( 'u' );
 		break;
@@ -282,22 +294,80 @@ void parseCmd( char chIn ) { // pass chIn == '?' for help
 		dirVerify();
 		chIn = 0;
 		break;
-
-	case 'Z':
-		bCheckFormat  = !bCheckFormat;
+	case 't': // Traverse
 		timeMe = micros();
+#ifndef RELEASE
+		bCheckUsed = myfs.checkUsed( true );
+#endif
+		timeMe = micros() - timeMe;
+		Serial.printf( "\n Done myfs.checkUsed() in %lu us.\n", timeMe );
+		//bCheckUsed ? Serial.print("\n CheckUsed On: ") : Serial.print(" CheckUsed Off: ");
+		lastTime = micros();
+		chIn = 0;
+		break;
+	case 'z': // OFF Zippy fast write when block preFormatted
+		bCheckFormat  = false;
+		timeMe = micros();
+#ifndef RELEASE
 		bCheckFormat = myfs.checkFormat( bCheckFormat );
+#endif
 		timeMe = micros() - timeMe;
 		Serial.printf( "\n Done myfs.checkFormat() in %lu us.\n", timeMe );
 		bCheckFormat ? Serial.print("\n CheckFormat On: ") : Serial.print(" CheckFormat Off: ");
 		lastTime = micros();
 		chIn = 0;
 		break;
-
+	case 'Z': // Zippy fast write when block preFormatted
+		bCheckFormat  = true;
+		timeMe = micros();
+#ifndef RELEASE
+		bCheckFormat = myfs.checkFormat( bCheckFormat );
+#endif
+		timeMe = micros() - timeMe;
+		Serial.printf( "\n Done myfs.checkFormat() in %lu us.\n", timeMe );
+		bCheckFormat ? Serial.print("\n CheckFormat On: ") : Serial.print(" CheckFormat Off: ");
+		lastTime = micros();
+		chIn = 0;
+		break;
+	case 'y': // Reclaim 1 unused format
+		lastTime = micros();
+		Serial.printf( "\n myfs.formatUnused( 1 ) ..." );
+		timeMe = micros();
+#ifndef RELEASE
+		myfs.formatUnused( 1 );
+#endif
+		timeMe = micros() - timeMe;
+		Serial.printf( "\n\t formatUnused :: Done Formatting Low Level in %lu us.\n", timeMe );
+		chIn = 0;
+		break;
+	case 'Y': // Reclaim 15 unused format
+		lastTime = micros();
+		Serial.printf( "\n myfs.formatUnused( 15 ) ..." );
+		timeMe = micros();
+#ifndef RELEASE
+		myfs.formatUnused( 15 );
+#endif
+		timeMe = micros() - timeMe;
+		Serial.printf( "\n\t formatUnused :: Done Formatting Low Level in %lu us.\n", timeMe );
+		chIn = 0;
+		break;
+	case 'f': // Reclaim all unused format
+		lastTime = micros();
+		Serial.printf( "\n myfs.formatUnused( 33000 ) ..." );
+		timeMe = micros();
+#ifndef RELEASE
+		myfs.formatUnused( 33000 );
+#endif
+		timeMe = micros() - timeMe;
+		Serial.printf( "\n\t formatUnused :: Done Formatting Low Level in %lu us.\n", timeMe );
+		chIn = 0;
+		break;
 	case 'l': // Show Loop Count
 		Serial.printf("\n\t Loop Count: %u (#fileCycle=%u), Bytes read %u, written %u, #Files=%u\n", LoopCnt, lCnt, rdCnt, wrCnt, filecount );
 		if ( 0 != errsLFS )
 			Serial.printf("\t ERROR COUNT =%u\n", errsLFS );
+		if ( 0 != warnLFS )
+			Serial.printf("\t Free Space Warn COUNT =%u\n", warnLFS );
 		dirVerify();
 		chIn = 0;
 		break;
@@ -439,8 +509,9 @@ uint32_t fileCycle(const char *dir) {
 	}
 	else {
 		if ( myfs.totalSize() - myfs.usedSize() < MAXFILL ) {
+			warnLFS++;
 			Serial.printf( "\tXXX\tXXX\tXXX\tXXX\tSIZE WARNING { MAXFILL } \n" );
-			cCnt=DELSTART;
+			cCnt = DELSTART;
 			return cCnt;	// EARLY EXIT
 		}
 		if ( nNum == 0 ) {
@@ -553,11 +624,13 @@ bool bigVerify( char szPath[], char chNow ) {
 	}
 	char mm;
 	uint32_t ii = 0;
-	Serial.printf( "\tVerify %s bytes %llu ... ", szPath, file3.size() );
+	uint32_t kk = file3.size() / 50;
+	Serial.printf( "\tVerify %s bytes %llu : ", szPath, file3.size() );
 	while ( file3.available() ) {
 		file3.read( &mm , 1 );
 		rdCnt++;
 		ii++;
+		if ( !(ii % kk) ) Serial.print('.');
 		if ( chNow != mm ) {
 			Serial.printf( "<Bad Byte!  %c! = %c [0x%X] @%u\n", chNow, mm, mm, ii );
 			parseCmd( '0' );
@@ -573,10 +646,10 @@ bool bigVerify( char szPath[], char chNow ) {
 		checkInput( 1 );	// PAUSE on CmdLine
 	}
 	else
-		Serial.printf( "\tGOOD! >>  bytes %lu\t", ii );
+		Serial.printf( "\tGOOD! >>  bytes %lu", ii );
 	file3.close();
 	timeMe = micros() - timeMe;
-	Serial.printf( "Big read&compare KBytes per second %5.2f \n", ii / (timeMe / 1000.0) );
+	Serial.printf( "\n\tBig read&compare KBytes per second %5.2f \n", ii / (timeMe / 1000.0) );
 	if ( 0 == ii ) return false;
 	return true;
 }
@@ -600,7 +673,7 @@ void bigFile( int doThis ) {
 	}
 	else {	// FILL DISK
 		lfs_ssize_t resW = 1;
-		char someData[4000];
+		char someData[2048];
 		uint32_t xx, toWrite;
 		toWrite = (myfs.totalSize()) - myfs.usedSize();
 		if ( toWrite < 65535 ) {
@@ -621,23 +694,27 @@ void bigFile( int doThis ) {
 			myFile[1] = fileID;
 			file3 = myfs.open(myFile, FILE_WRITE);
 		} while ( fileID < '9' && file3.size() > 0);
-		memset( someData, fileID, 4000 );
+		if ( fileID == '9' ) {
+			Serial.print( "Disk has 9 halves 0-8! DO :: b or q or F");
+			return;
+		}
+		memset( someData, fileID, 2048 );
 		int hh = 0;
-		while ( toWrite > 4000 && resW > 0 ) {
-			resW = file3.write( someData , 4000 );
+		while ( toWrite > 2048 && resW > 0 ) {
+			resW = file3.write( someData , 2048 );
 			hh++;
 			if ( !(hh % 40) ) Serial.print('.');
-			toWrite -= 4000;
+			toWrite -= 2048;
 		}
 		xx -= toWrite;
 		file3.close();
 		timeMe = micros() - timeMe;
+		file3 = myfs.open(myFile, FILE_WRITE);
 		if ( file3.size() > 0 ) {
 			filecount++;
-			file3 = myfs.open(myFile, FILE_WRITE);
 			Serial.printf( "\nBig write %s took %5.2f Sec for %lu Bytes : file3.size()=%llu", myFile , timeMe / 1000000.0, xx, file3.size() );
-			file3.close();
 		}
+		if ( file3 != 0 ) file3.close();
 		Serial.printf( "\n\tBig write KBytes per second %5.2f \n", xx / (timeMe / 1000.0) );
 		Serial.printf("\nBytes Used: %llu, Bytes Total:%llu\n", myfs.usedSize(), myfs.totalSize());
 		if ( resW < 0 ) {

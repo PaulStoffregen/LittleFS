@@ -1,6 +1,6 @@
 #include <LittleFS.h>
 
-#define RELEASE // Use this to exclude defragster new functions not in Beta5
+//#define RELEASE // Use this to exclude defragster new functions not in Beta5
 
 #define HALFCUT  // HALFCUT defined to fill half the disk
 #define ROOTONLY // NORMAL is NOT DEFINED!
@@ -10,12 +10,14 @@
 
 //#define TEST_RAM
 //#define TEST_RAM2 // Defragster LittleFS only - not in RELEASE
-#define TEST_SPI
-//#define TEST_QSPI
+//#define TEST_SPI
+#define TEST_QSPI
 //#define TEST_PROG
 
 // Set for SPI usage
-const int FlashChipSelect = 6; // digital pin for flash chip CS pin
+//const int FlashChipSelect = 10; // AUDIO BOARD
+//const int FlashChipSelect = 5; // PJRC Mem board 64MB on #5, #6 : NAND 1Gb on #3, 2GB on #4
+const int FlashChipSelect = 6; // digital pin for flash chip CS pin 
 
 
 #ifdef TEST_RAM
@@ -31,7 +33,7 @@ EXTMEM char buf[MYPSRAM * 1024 * 1024];	// USE DMAMEM for more memory than ITCM 
 //DMAMEM char buf[490000];	// USE DMAMEM for more memory than ITCM allows - or remove
 char szDiskMem[] = "RAMD_TWO";
 #elif defined(TEST_SPI)
-//const int FlashChipSelect = 21; // Arduino 101 built-in SPI Flash
+//const int FlashChipSelect = 10; // Arduino 101 built-in SPI Flash
 #define FORMATSPI
 //#define FORMATSPI2
 LittleFS_SPIFlash myfs;
@@ -145,7 +147,7 @@ void loop() {
 		checkInput( 1 );
 }
 
-char szInputs[] = "0123456789RdchkFqvplmuxBbZztyYf+-?";
+char szInputs[] = "0123456789RdchkFqvplmusSBbZztyYxf+-?";
 uint32_t lastTime;
 void checkInput( int step ) { // prompt for input without user input with step != 0
 	uint32_t nowTime = micros();
@@ -190,6 +192,7 @@ void parseCmd( char chIn ) { // pass chIn == '?' for help
  'd' Directory of LittleFS\n\
  'b' big file delete\n\
  'B' BIG FILE RUN\n\
+ 's' BIG FILE Truncate RUN\n\
  'c' Continuous Loop\n\
  'h' Hundred loops\n\
  'k' Thousand loops\n\
@@ -208,7 +211,7 @@ void parseCmd( char chIn ) { // pass chIn == '?' for help
  '+' more add to delete cycles\n\
  '-' fewer add to delete cycles\n\
  'y'__reclaim 1 block :: myfs.formatUnused( 1 )\n\
- 'Y'__reclaim 5 blocks :: myfs.formatUnused( 15 )\n\
+ 'Y'__reclaim 15 blocks :: myfs.formatUnused( 15 )\n\
  '?' Help list\n\
  >> ITEMS '~'__ : double underbar : NO FUNCTION w/ RELEASE <<" );
 		break;
@@ -237,6 +240,14 @@ void parseCmd( char chIn ) { // pass chIn == '?' for help
 	case 'B':
 		lastTime = micros();
 		bigFile( 1 ); // CREATE
+		chIn = 0;
+		break;
+	case 's':
+		bigFileTrun( 0 ); // CREATE
+		break;
+	case 'S':
+		lastTime = micros();
+		bigFileTrun( 1 ); // CREATE
 		chIn = 0;
 		break;
 	case 'c':
@@ -724,3 +735,77 @@ void bigFile( int doThis ) {
 		}
 	}
 }
+
+void bigFileTrun( int doThis ) {
+	char myFile[] = "/0_bigftrunc.txt";
+	char fileID = '0' - 1;
+
+	if ( 0 == doThis ) {	// delete File
+		Serial.printf( "\nDelete with read verify all #bigfile's\n");
+		do {
+			fileID++;
+			myFile[1] = fileID;
+			if ( myfs.exists(myFile) && bigVerify( myFile, fileID) ) {
+				filecount--;
+				myfs.remove(myFile);
+			}
+			else break; // no more of these
+		} while ( 1 );
+	}
+	else {	// FILL DISK
+		lfs_ssize_t resW = 1;
+		char someData[2048];
+		uint32_t xx, toWrite;
+		toWrite = 2048*1000;
+		if ( toWrite > (65535+(myfs.totalSize() - myfs.usedSize())) ) {
+			Serial.print( "Disk too full! DO :: q or F");
+			return;
+		}
+		xx = toWrite;
+		uint32_t timeMe;
+		Serial.printf( "\n\nStart Big write of %u Bytes  ... patience ...", xx);
+		/*
+		timeMe = micros();
+		file3 = nullptr;
+		do {
+			if ( file3 ) file3.close();
+			fileID++;
+			myFile[1] = fileID;
+			file3 = myfs.open(myFile, FILE_WRITE);
+		} while ( fileID < '4' && file3.size() > 0);
+		file3.truncate( toWrite );
+		file3.close();
+		timeMe = micros() - timeMe;
+		Serial.printf( "\nBig write TRUNCATE %s took %5.2f Sec for %lu Bytes : file3.size()=%llu\n", myFile , timeMe / 1000000.0, xx, file3.size() );
+		*/
+		memset( someData, fileID, 2048 );
+		int hh = 0;
+		timeMe = micros();
+		file3 = myfs.open(myFile, FILE_WRITE);
+		file3.seek( 0 );
+		while ( toWrite > 2048 && resW > 0 ) {
+			resW = file3.write( someData , 2048 );
+			hh++;
+			if ( !(hh % 40) ) Serial.print('.');
+			toWrite -= 2048;
+		}
+		xx -= toWrite;
+		file3.truncate( xx );
+		file3.close();
+		timeMe = micros() - timeMe;
+		file3 = myfs.open(myFile, FILE_WRITE);
+		if ( file3.size() > 0 ) {
+			filecount++;
+			Serial.printf( "\nBig write %s took %5.2f Sec for %lu Bytes : file3.size()=%llu", myFile , timeMe / 1000000.0, xx, file3.size() );
+		}
+		if ( file3 != 0 ) file3.close();
+		Serial.printf( "\n\tBig write KBytes per second %5.2f \n", xx / (timeMe / 1000.0) );
+		Serial.printf("\nBytes Used: %llu, Bytes Total:%llu\n", myfs.usedSize(), myfs.totalSize());
+		if ( resW < 0 ) {
+			Serial.printf( "\nBig write ERR# %i 0x%X \n", resW, resW );
+			errsLFS++;
+			myfs.remove(myFile);
+		}
+	}
+}
+

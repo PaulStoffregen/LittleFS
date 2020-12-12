@@ -106,6 +106,8 @@ bool LittleFS_SPIFlash::begin(uint8_t cspin, SPIClass &spiport)
 	progtime = info->progtime;
 	erasetime = info->erasetime;
 	checkformat = nullptr;
+	checkused = nullptr;
+	lfschange = true;
 	configured = true;
 
 	//Serial.println("attempting to mount existing media");
@@ -173,12 +175,11 @@ static bool blockIsBlank(struct lfs_config *config, lfs_block_t block, void *rea
 FLASHMEM
 bool LittleFS::checkFormat(bool readCheck) {
 	if ( !configured || !readCheck ) {
-		if ( checkformat != nullptr) {
-			free( checkformat );
-		}
+		lfschange = true;
+		if ( checkformat != nullptr) free( checkformat );
 		checkformat = nullptr;
 	}
-	else if ( readCheck ) {
+	else if ( readCheck ) { //  called by formatUnused()
 		uint32_t iiblk = 1+(config.block_count /8);
 		if ( checkformat == nullptr) checkformat = (uint8_t *)malloc( iiblk );
 		if ( checkformat == nullptr) return (checkformat != nullptr);
@@ -186,23 +187,149 @@ bool LittleFS::checkFormat(bool readCheck) {
 		uint8_t jjbit;
 		void *buffer = malloc(config.read_size);
 #ifdef DEBUGCF
-			uint32_t *fake = (uint32_t *)checkformat;
-			int ff=0;
+		Serial.printf( "\n\n checkFormat:: Pre-Formatted Blocks Map \n" );
+		uint32_t *fake = (uint32_t *)checkformat;
+		int ff=0;
 #endif
+		uint8_t *lfsUsed;
+		checkUsed( true ); // Call this to exclude checking of reported lfs used blocks
+		if ( nullptr != checkused ) lfsUsed = checkused; // 1 bits are lfs Used
+		else lfsUsed = checkformat; // checkUsed() failed: pre-zeroed above will skip lfs exclusion
+
+
+#ifdef DEBUGCF
+		if ( nullptr != checkused ) Serial.printf( "\n checkFormat:: lfsUsed = checkused; \n" );
+		else Serial.printf( "\n checkFormat:: lfsUsed = checkformat; \n" );
+#endif
+
+
 		for (unsigned int block=0; block < config.block_count; block++) {
-			if (blockIsBlank(&config, block, buffer)) {
-				iiblk = block/8;
-				jjbit = 1<<(block%8);
-				checkformat[iiblk] = checkformat[iiblk] | jjbit;
+			iiblk = block/8;
+			jjbit = 1<<(block%8);
+			if ( !(lfsUsed[iiblk] & jjbit ) ) {
+				if (blockIsBlank(&config, block, buffer)) {
+					checkformat[iiblk] = checkformat[iiblk] | jjbit;
+				}
 			}
 #ifdef DEBUGCF
-			if ( (block/8)>3 && (0==(block/8)%4) && 0==block%8 ) Serial.printf( "\t0x%lx", fake[ff++]); // bugbug DEBUG
-			if ( !((block/8)%40) && 0==block%8 ) Serial.printf( "\n%u", block ); // bugbug DEBUG
+			if ( (block/8)>3 && (0==(block/8)%4) && 0==block%8 ) Serial.printf( "\t0x%lx", fake[ff++]);
+			if ( !((block/8)%40) && 0==block%8 ) Serial.printf( "\n%u", block );
 #endif
 		}
 		free(buffer);
 	}
 	return checkformat != nullptr;
+}
+
+static int cb_usedBlocks( void *inData, lfs_block_t block )
+{
+	static lfs_block_t maxBlock;
+	static uint32_t totBlock;
+	if ( nullptr == inData ) { // not null during traverse
+		uint32_t totRet = totBlock;
+		if ( 0 != block ) {
+			maxBlock = block;
+			totBlock = 0;
+		}
+		return totRet; // exit after init, end, or bad call
+	}
+	totBlock++;
+	if ( block > maxBlock ) return block; // this is beyond media blocks
+	uint32_t iiblk = block/8;
+	uint8_t jjbit = 1<<(block%8);
+	uint8_t *myData = (uint8_t *)inData;
+	myData[iiblk] = myData[iiblk] | jjbit;
+	return 0;
+}
+
+FLASHMEM
+uint32_t LittleFS::formatUnused(uint32_t blockCnt) {
+	// UNSAFE ???? if ( lfschange == true ) 
+	checkFormat( true );
+	if ( nullptr == checkformat || nullptr == checkused ) return 0;
+	uint32_t ii=0, jj=0, tt;
+	uint8_t bb;
+	uint8_t *lfsUsed = checkused; // 1 bits are lfs Used
+	uint8_t *preFmt = checkformat; // 1 bits are pre Formatted block
+	while ( ii<config.block_count && jj<blockCnt ) {
+		if ( 0==(ii%8) ) bb=1;
+		tt = ii/8;
+		if ( !(lfsUsed[tt] & bb ) && !(preFmt[tt] & bb) ) { // block not already formatted or used
+			(*config.erase)(&config, ii);
+#ifdef DEBUGCF
+		Serial.printf( "\n UnUsed Block %lu formatted. # %lu of %lu", ii, jj+1, blockCnt );
+		Serial.printf( "\t  lfsU=0x%x preF=0x%x\t(after0x%x)", lfsUsed[tt] , preFmt[tt], preFmt[tt]|bb );
+#endif
+			preFmt[tt] |= bb; // mark as pre-formatted
+			jj++;
+		}
+		ii++;
+		bb = bb<<1;
+	}
+#ifdef DEBUGCF
+		Serial.printf( "\n formatUnused Block formatted :: # %lu of %lu\n", jj, config.block_count );
+#endif
+	return jj;
+}
+
+FLASHMEM
+bool LittleFS::checkUsed(bool readCheck) {
+	if ( !configured || !readCheck ) {
+		if ( checkused != nullptr) {
+			free( checkused );
+		}
+		checkused = nullptr;
+		lfschange = true;
+	}
+	else if ( readCheck ) {
+
+#ifdef DEBUGCF
+	uint32_t tmpTotBlock = cb_usedBlocks( nullptr, 0 ); // get total blocks
+#endif
+		int err=0;
+		cb_usedBlocks( nullptr, config.block_count ); // init and pass block_count
+		uint32_t iiblk = 1+(config.block_count /8);
+		if ( checkused == nullptr) checkused = (uint8_t *)malloc( iiblk );
+		if ( checkused == nullptr) return (checkused != nullptr);
+		memset(checkused, 0, iiblk);
+		err = lfs_fs_traverse(&lfs, cb_usedBlocks, checkused);
+		uint32_t totBlock = cb_usedBlocks( nullptr, 0 ); // get total blocks
+#ifdef DEBUGCF
+		if ( lfschange == false ) {
+			if ( 0 != tmpTotBlock && totBlock != tmpTotBlock ) Serial.printf( "\n lfschange missed used %lu != %lu",tmpTotBlock, totBlock  );
+			else Serial.printf( "\n No lfschange could have skipped ???" );
+		}
+		Serial.printf( "\n\n checkUsed:: lfs Used Blocks Map: #used is %lu : lfs traverse return %i (neg on err)\n", totBlock, err );
+		uint32_t *fakeU = (uint32_t *)checkused;
+		uint32_t ff=0;
+		for (unsigned int block=0; block < config.block_count; block++) {
+			if ( (block/8)>3 && (0==(block/8)%4) && 0==block%8 ) Serial.printf( "\t0x%lx", fakeU[ff++]);
+			if ( !((block/8)%40) && 0==block%8 ) Serial.printf( "\n%u", block );
+		}
+		Serial.printf( "\n checkUsed:: lfs Used Blocks Map: #used is %lu\n", totBlock );
+		if ( checkformat != nullptr && checkused != nullptr ) {
+			uint32_t *fakeC = (uint32_t *)checkformat;
+			Serial.printf( "\n lfs Used&Format overlap errs?: "  );
+			uint32_t tt;
+			for ( ff=0; ff < config.block_count/32; ff++) {
+				tt = fakeU[ff]&fakeC[ff];
+				//if ( 0!=(tt&fakeC[ff]) ) Serial.printf( "[%lu]:0x%lx!=0x%lx ^=%lX\t", ff*32, fakeU[ff], fakeC[ff], tt);
+				if ( 0!=tt ) Serial.printf( "[%lu]:0x%lx&0x%lx !=0?\t", ff*32, fakeU[ff], fakeC[ff]);
+			}
+			Serial.printf( "{eol}\n"  );
+		}
+#endif
+		if ( err < 0 )
+		{
+			if ( checkused != nullptr)
+				free( checkused );
+			checkused = nullptr;
+		}
+		else {
+			lfschange = false; // TODO - this must be accurately set to allow avoiding refresh of bitmaps
+		}
+	}
+	return checkused != nullptr;
 }
 
 FLASHMEM
@@ -292,17 +419,45 @@ int LittleFS_SPIFlash::prog(lfs_block_t block, lfs_off_t offset, const void *buf
 	return wait(progtime);
 }
 
-int LittleFS_SPIFlash::erase(lfs_block_t block)
-{
-	if (!port) return LFS_ERR_IO;
+bool knownFormatted( struct lfs_config *config, lfs_block_t block, uint8_t *checkformat, bool unset=true );
+bool knownFormatted( struct lfs_config *config, lfs_block_t block, uint8_t *checkformat, bool unset ) {
 	if ( checkformat != nullptr) {
 		uint32_t iiblk = block/8;
 		uint8_t jjbit = 1<<(block%8);
 		if ( checkformat[iiblk] & jjbit ) { // was set as formatted, unset as erase precedes usage
-			checkformat[iiblk] &= ~jjbit;
-			return 0;
+			if ( unset )
+				checkformat[iiblk] &= ~jjbit; // LFS call to format puts it in used state
+			return true;
+		}
+		else if ( !unset ) { // TODO if called for PJRC format, not LFS, then it will be formatted after this
+// TODO			checkformat[iiblk] &= jjbit; // other Format leaves it formatted
 		}
 	}
+
+	void *readBuf = malloc(config->read_size);
+//static bool blockIsBlank(struct lfs_config *config, lfs_block_t block, void *readBuf)
+{
+	if (!readBuf) return false;
+	for (lfs_off_t offset=0; offset < config->block_size; offset += config->read_size) {
+		memset(readBuf, 0, config->read_size);
+		config->read(config, block, offset, readBuf, config->read_size);
+		const uint8_t *buf = (uint8_t *)readBuf;
+		for (unsigned int i=0; i < config->read_size; i++) {
+			if (buf[i] != 0xFF) return false;
+		}
+	}
+	free(readBuf);
+	return true; // all bytes read as 0xFF
+}
+	free(readBuf);
+	return false;
+}
+
+
+int LittleFS_SPIFlash::erase(lfs_block_t block)
+{
+	if (!port) return LFS_ERR_IO;
+	if ( knownFormatted( &config, block, checkformat ) ) return 0;
 	const uint32_t addr = block * config.block_size;
 	const uint8_t cmd = (addrbits == 24) ? 0x20 : 0x21; // erase sector
 	uint8_t cmdaddr[5];
@@ -510,6 +665,7 @@ bool LittleFS_QSPIFlash::begin()
 	progtime = info->progtime;
 	erasetime = info->erasetime;
 	checkformat = nullptr;
+	lfschange = true;
 	configured = true;
 
 	// configure FlexSPI2 for chip's size
@@ -600,14 +756,7 @@ int LittleFS_QSPIFlash::prog(lfs_block_t block, lfs_off_t offset, const void *bu
 
 int LittleFS_QSPIFlash::erase(lfs_block_t block)
 {
-	if ( checkformat != nullptr) {
-		uint32_t iiblk = block/8;
-		uint8_t jjbit = 1<<(block%8);
-		if ( checkformat[iiblk] & jjbit ) { // was set as formatted, unset as erase precedes usage
-			checkformat[iiblk] &= ~jjbit;
-			return 0;
-		}
-	}
+	if ( knownFormatted( &config, block, checkformat ) ) return 0;
 	flexspi2_ip_command(10, 0x00800000);
 	const uint32_t addr = block * config.block_size;
 	flexspi2_ip_command(12, 0x00800000 + addr);
@@ -726,6 +875,7 @@ int LittleFS_Program::static_prog(const struct lfs_config *c, lfs_block_t block,
 int LittleFS_Program::static_erase(const struct lfs_config *c, lfs_block_t block)
 {
 	//Serial.printf("   prog er: block=%d\n", block);
+	//if ( knownFormatted( block, checkformat ) ) return 0;
 	uint8_t *p = (uint8_t *)(baseaddr + block * 4096);
 	eepromemu_flash_erase_sector(p);
 	return 0;

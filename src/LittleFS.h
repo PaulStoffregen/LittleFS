@@ -198,15 +198,11 @@ public:
 		configured = false;
 		mounted = false;
 		checkformat = nullptr;
-		checkused = nullptr;
-		lfschange = true;
 		config.context = nullptr;
 	}
 	bool quickFormat();
 	bool lowLevelFormat(char progressChar=0);
 	bool checkFormat(bool readCheck);
-	bool checkUsed(bool readCheck);
-	uint32_t formatUnused(uint32_t blockCnt);
 	File open(const char *filepath, uint8_t mode = FILE_READ) {
 		//Serial.println("LittleFS open");
 		if (!mounted) return File();
@@ -282,11 +278,11 @@ protected:
 	bool configured;
 	bool mounted;
 	uint8_t *checkformat;
-	uint8_t *checkused;
-	bool lfschange;
 	lfs_t lfs;
 	lfs_config config;
 };
+
+
 
 
 
@@ -314,25 +310,13 @@ public:
 		config.prog = &static_prog;
 		config.erase = &static_erase;
 		config.sync = &static_sync;
-		if ( 0 && size > 1024*1024 ) {
-			config.read_size = 256;
-			config.prog_size = 256;
-			config.block_size = 4096;
-			config.block_count = size / 4096;
-			config.block_cycles = 900;
-			config.cache_size = 256;
-			//config.lookahead_size = 64;  // was 64
-			config.lookahead_size = 512; // (config.block_count / 8 + 7) & 0xFFFFFFF8;
-		}
-		else {
-			config.read_size = 64;
-			config.prog_size = 64;
-			config.block_size = 256;
-			config.block_count = size / 256;
-			config.block_cycles = 50;
-			config.cache_size = 64;
-			config.lookahead_size = 64;
-		}
+		config.read_size = 64;
+		config.prog_size = 64;
+		config.block_size = 256;
+		config.block_count = size / 256;
+		config.block_cycles = 50;
+		config.cache_size = 64;
+		config.lookahead_size = 64;
 		config.name_max = LFS_NAME_MAX;
 		config.file_max = 0;
 		config.attr_max = 0;
@@ -343,116 +327,26 @@ public:
 		//Serial.println("mounted atfer format");
 		mounted = true;
 		checkformat = nullptr;
-		checkused = nullptr;
-		lfschange = true;
 		return true;
 	}
 private:
 	static int static_read(const struct lfs_config *c, lfs_block_t block,
 	  lfs_off_t offset, void *buffer, lfs_size_t size) {
 		//Serial.printf("    ram rd: block=%d, offset=%d, size=%d\n", block, offset, size);
-		uint32_t index = block * c->block_size + offset;
+		uint32_t index = block * 256 + offset;
 		memcpy(buffer, (uint8_t *)(c->context) + index, size);
 		return 0;
 	}
 	static int static_prog(const struct lfs_config *c, lfs_block_t block,
 	  lfs_off_t offset, const void *buffer, lfs_size_t size) {
 		//Serial.printf("    ram wr: block=%d, offset=%d, size=%d\n", block, offset, size);
-		uint32_t index = block * c->block_size + offset;
+		uint32_t index = block * 256 + offset;
 		memcpy((uint8_t *)(c->context) + index, buffer, size);
 		return 0;
 	}
 	static int static_erase(const struct lfs_config *c, lfs_block_t block) {
-		uint32_t index = block * c->block_size;
-		memset((uint8_t *)(c->context) + index, 0xFF, c->block_size);
-		return 0;
-	}
-	static int static_sync(const struct lfs_config *c) {
-		return 0;
-	}
-};
-
-
-
-
-class LittleFS_RAM2 : public LittleFS
-{
-public:
-	LittleFS_RAM2() { }
-	bool begin(uint32_t size) {
-#if defined(__IMXRT1062__)
-		return begin(extmem_malloc(size), size);
-#else
-		return begin(malloc(size), size);
-#endif
-	}
-	bool begin(void *ptr, uint32_t size) {
-		return begin(extmem_malloc(size), size, 1024 );	
-	}
-	bool begin(void *ptr, uint32_t size, uint32_t blockSize ) {
-		//Serial.println("configure "); delay(5);
-		configured = false;
-		if (!ptr) return false;
-		memset(ptr, 0xFF, size); // always start with blank slate
-		size = size & 0xFFFFFF00;
-		memset(&lfs, 0, sizeof(lfs));
-		memset(&config, 0, sizeof(config));
-		config.context = ptr;
-		config.read = &static_read;
-		config.prog = &static_prog;
-		config.erase = &static_erase;
-		config.sync = &static_sync;
-		if ( size > 1024*1024 ) {
-			config.read_size = 256; // Must set cache_size. If read_buffer or prog_buffer are provided manually, these must be cache_size.
-			config.prog_size = 256;
-			config.block_size = blockSize;
-			config.block_count = size / blockSize;
-			config.block_cycles = 900;
-			config.cache_size = 256;
-			config.lookahead_size = (config.block_count / 8 + 7) & 0xFFFFFFF8;
-		}
-		else {
-			config.read_size = 64;
-			config.prog_size = 64;
-			config.block_size = 256;
-			config.block_count = size / 256;
-			config.block_cycles = 50;
-			config.cache_size = 64;
-			config.lookahead_size = 64;
-		}
-		config.name_max = LFS_NAME_MAX;
-		config.file_max = 0;
-		config.attr_max = 0;
-		configured = true;
-		if (lfs_format(&lfs, &config) < 0) return false;
-		//Serial.println("formatted");
-		if (lfs_mount(&lfs, &config) < 0) return false;
-		//Serial.println("mounted atfer format");
-		mounted = true;
-		checkformat = nullptr;
-		checkused = nullptr;
-		lfschange = true;
-		Serial.printf("RAM2 BlockSize %lu\n", config.block_size );
-		return true;
-	}
-private:
-	static int static_read(const struct lfs_config *c, lfs_block_t block,
-	  lfs_off_t offset, void *buffer, lfs_size_t size) {
-		//Serial.printf("    ram rd: block=%d, offset=%d, size=%d\n", block, offset, size);
-		uint32_t index = block * c->block_size + offset;
-		memcpy(buffer, (uint8_t *)(c->context) + index, size);
-		return 0;
-	}
-	static int static_prog(const struct lfs_config *c, lfs_block_t block,
-	  lfs_off_t offset, const void *buffer, lfs_size_t size) {
-		//Serial.printf("    ram wr: block=%d, offset=%d, size=%d\n", block, offset, size);
-		uint32_t index = block * c->block_size + offset;
-		memcpy((uint8_t *)(c->context) + index, buffer, size);
-		return 0;
-	}
-	static int static_erase(const struct lfs_config *c, lfs_block_t block) {
-		uint32_t index = block * c->block_size;
-		memset((uint8_t *)(c->context) + index, 0xFF, c->block_size);
+		uint32_t index = block * 256;
+		memset((uint8_t *)(c->context) + index, 0xFF, 256);
 		return 0;
 	}
 	static int static_sync(const struct lfs_config *c) {
@@ -565,5 +459,14 @@ public:
 	bool begin(uint32_t size) { return false; }
 };
 #endif
+
+
+
+
+
+
+
+
+
 
 

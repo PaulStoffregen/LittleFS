@@ -1,7 +1,7 @@
 #include <LittleFS.h>
 
 #define HALFCUT  // HALFCUT defined to fill half the disk
-//#define ROOTONLY // NORMAL is NOT DEFINED!
+#define ROOTONLY // NORMAL is NOT DEFINED!
 #define NUMDIRS 28  // When not ROOTONLY must be 1 or more
 
 //#define TEST_RAM
@@ -243,7 +243,6 @@ void parseCmd( char chIn ) { // pass chIn == '?' for help
 		timeMe = micros() - timeMe;
 		Serial.printf( "\n Done Formatting Low Level in %lu us.\n", timeMe );
 		errsLFS = 0; // No Errors on new Format
-		bCheckFormat  = false;
 		parseCmd( 'u' );
 		break;
 	case 'q': // quick format

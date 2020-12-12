@@ -55,8 +55,8 @@ uint32_t errsLFS = 0;
 uint32_t warnLFS = 0;
 uint32_t lCnt = 0;
 uint32_t LoopCnt = 0;
-uint32_t rdCnt = 0;
-uint32_t wrCnt = 0;
+uint64_t rdCnt = 0;
+uint64_t wrCnt = 0;
 int filecount = 0;
 
 void setup() {
@@ -178,7 +178,7 @@ void checkInput( int step ) { // prompt for input without user input with step !
 }
 void parseCmd( char chIn ) { // pass chIn == '?' for help
 	uint32_t timeMe;
-	uint32_t res;
+	static uint32_t res=0;
 	switch (chIn ) {
 	case '?':
 		Serial.printf( "%s\n", " 0, 1-9 '#' passes continue loop before Pause\n\
@@ -304,7 +304,7 @@ void parseCmd( char chIn ) { // pass chIn == '?' for help
 		Serial.printf( "\n myfs.formatUnused( 1 ) ...\n" );
 		timeMe = micros();
 #ifndef RELEASE
-		res=myfs.formatUnused( 1, 0 );
+		res=myfs.formatUnused( 1, res );
 #endif
 		timeMe = micros() - timeMe;
 		Serial.printf( "\n\t formatUnused :: Done Formatting Low Level in %lu us (last %lu).\n", timeMe, res );
@@ -315,7 +315,7 @@ void parseCmd( char chIn ) { // pass chIn == '?' for help
 		Serial.printf( "\n myfs.formatUnused( 15 ) ...\n" );
 		timeMe = micros();
 #ifndef RELEASE
-		res= myfs.formatUnused( 15, 0 );
+		res= myfs.formatUnused( 15, res );
 #endif
 		timeMe = micros() - timeMe;
 		Serial.printf( "\n\t formatUnused :: Done Formatting Low Level in %lu us (last %lu).\n", timeMe, res );
@@ -333,7 +333,7 @@ void parseCmd( char chIn ) { // pass chIn == '?' for help
 		chIn = 0;
 		break;
 	case 'l': // Show Loop Count
-		Serial.printf("\n\t Loop Count: %u (#fileCycle=%u), Bytes read %u, written %u, #Files=%u\n", LoopCnt, lCnt, rdCnt, wrCnt, filecount );
+		Serial.printf("\n\t Loop Count: %u (#fileCycle=%u), Bytes read %llu, written %llu, #Files=%u\n", LoopCnt, lCnt, rdCnt, wrCnt, filecount );
 		if ( 0 != errsLFS )
 			Serial.printf("\t ERROR COUNT =%u\n", errsLFS );
 		if ( 0 != warnLFS )
@@ -524,7 +524,7 @@ uint32_t fileCycle(const char *dir) {
 			}
 		}
 		if ( pauseDir ) checkInput( 1 );
-		Serial.print("\n");
+		//Serial.print("\n");
 		delayMicroseconds(ADDDELAY);
 	}
 	checkInput( 0 ); // user stop request?
@@ -542,6 +542,7 @@ void dirVerify() {
 }
 
 void readVerify( char szPath[], char chNow ) {
+	uint32_t timeMe = micros();
 	file3 = myfs.open(szPath);
 	if ( 0 == file3 ) {
 		Serial.printf( "\tV\t Fail File open %s\n", szPath );
@@ -576,7 +577,7 @@ void readVerify( char szPath[], char chNow ) {
 			}
 		}
 	}
-	Serial.printf( "\tVerify %s bytes %u ", szPath, ii );
+	Serial.printf( "  Verify %s %uB ", szPath, ii );
 	if (ii != file3.size()) {
 		Serial.printf( "\n\tRead Count fail! :: read %u != f.size %llu", ii, file3.size() );
 		parseCmd( '0' );
@@ -584,6 +585,8 @@ void readVerify( char szPath[], char chNow ) {
 		checkInput( 1 );	// PAUSE on CmdLine
 	}
 	file3.close();
+	timeMe = micros() - timeMe;
+	Serial.printf( " @KB/sec %5.2f \n", ii / (timeMe / 1000.0) );
 }
 
 bool bigVerify( char szPath[], char chNow ) {

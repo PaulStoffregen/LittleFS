@@ -26,6 +26,7 @@
 #define SPICONFIG   SPISettings(30000000, MSBFIRST, SPI_MODE0)
 
 
+
 PROGMEM static const struct chipinfo {
 	uint8_t id[3];
 	uint8_t addrbits;	// number of address bits, 24 or 32
@@ -47,9 +48,14 @@ PROGMEM static const struct chipinfo {
 	{{0xEF, 0x70, 0x20}, 32, 256, 4096, 67108864, 3500, 400000}, // Winbond W25Q512JV*IM (DTR)
 	{{0x1F, 0x84, 0x01}, 24, 256, 4096, 524288, 2500, 300000}, // Adesto/Atmel AT25SF041
 	{{0x01, 0x40, 0x14}, 24, 256, 4096, 1048576, 5000, 300000}, // Spansion S25FL208K
+	//FRAM
+	{{0x03, 0x2E, 0xC2}, 24, 64, 128, 1048576, 250, 1200},  //Cypress 8Mb FRAM
+	{{0xC2, 0x24, 0x00}, 24, 64, 128, 131072, 250, 1200},  //Cypress 1Mb FRAM
+	{{0xC2, 0x24, 0x01}, 24, 64, 128, 131072, 250, 1200},  //Cypress 1Mb FRAM, rev1
+	{{0xAE, 0x83, 0x09}, 24, 64, 128, 131072, 250, 1200},  //ROHM MR45V100A 1 Mbit FeRAM Memory
+	{{0xC2, 0x26, 0x08}, 24, 64, 128, 131072, 250, 1200},  //Cypress 4Mb FRAM
 
 };
-
 
 static const struct chipinfo * chip_lookup(const uint8_t *id)
 {
@@ -82,7 +88,7 @@ bool LittleFS_SPIFlash::begin(uint8_t cspin, SPIClass &spiport)
 	digitalWrite(pin, HIGH);
 	port->endTransaction();
 
-	//Serial.printf("Flash ID: %02X %02X %02X\n", buf[1], buf[2], buf[3]);
+	//Serial.printf("Flash ID: %02X %02X %02X  %02X\n", buf[1], buf[2], buf[3], buf[4]);
 	const struct chipinfo *info = chip_lookup(buf + 1);
 	if (!info) return false;
 	//Serial.printf("Flash size is %.2f Mbyte\n", (float)info->chipsize / 1048576.0f);
@@ -128,6 +134,83 @@ bool LittleFS_SPIFlash::begin(uint8_t cspin, SPIClass &spiport)
 }
 
 FLASHMEM
+bool LittleFS_SPIFram::begin(uint8_t cspin, SPIClass &spiport)
+{
+	pin = cspin;
+	port = &spiport;
+
+	//Serial.println("flash begin");
+	configured = false;
+	digitalWrite(pin, HIGH);
+	pinMode(pin, OUTPUT);
+	port->begin();
+
+	delay(100);
+	uint8_t buf[9];
+	
+	port->beginTransaction(SPICONFIG);
+    digitalWrite(pin, LOW);
+	delayNanoseconds(50);
+    port->transfer(0x9f);  //0x9f - JEDEC register
+    for(uint8_t i = 0; i<9; i++)
+      buf[i] = port->transfer(0);
+	//delayNanoseconds(50);
+    digitalWriteFast(pin, HIGH); // Chip deselect
+    port->endTransaction();
+
+
+    if(buf[0] == 0x7F){
+		buf[0] = buf[6];
+		buf[1] = buf[7];
+		buf[2] = buf[8];
+    }
+	//Serial.printf("Flash ID: %02X %02X %02X\n", buf[0], buf[1], buf[2]);
+	const struct chipinfo *info = chip_lookup(buf );
+	if (!info) return false;
+	//Serial.printf("Flash size is %.2f Mbyte\n", (float)info->chipsize / 1048576.0f);
+
+	memset(&lfs, 0, sizeof(lfs));
+	memset(&config, 0, sizeof(config));
+	config.context = (void *)this;
+	config.read = &static_read;
+	config.prog = &static_prog;
+	config.erase = &static_erase;
+	config.sync = &static_sync;
+	config.read_size = info->progsize;
+	config.prog_size = info->progsize;
+	config.block_size = info->erasesize;
+	config.block_count = info->chipsize / info->erasesize;
+	config.block_cycles = 400;
+	config.cache_size = info->progsize;
+	config.lookahead_size = info->progsize;
+	config.name_max = LFS_NAME_MAX;
+	addrbits = info->addrbits;
+	progtime = info->progtime;
+	erasetime = info->erasetime;
+	configured = true;
+
+	Serial.println("attempting to mount existing media");
+	if (lfs_mount(&lfs, &config) < 0) {
+		Serial.println("couldn't mount media, attemping to format");
+		if (lfs_format(&lfs, &config) < 0) {
+			Serial.println("format failed :(");
+			port = nullptr;
+			return false;
+		}
+		Serial.println("attempting to mount freshly formatted media");
+		if (lfs_mount(&lfs, &config) < 0) {
+			Serial.println("mount after format failed :(");
+			port = nullptr;
+			return false;
+		}
+	}
+	mounted = true;
+	//Serial.println("success");
+	return true;
+}
+
+
+FLASHMEM
 bool LittleFS::quickFormat()
 {
 	if (!configured) return false;
@@ -166,6 +249,70 @@ static bool blockIsBlank(struct lfs_config *config, lfs_block_t block, void *rea
 		}
 	}
 	return true; // all bytes read as 0xFF
+}
+
+static int cb_usedBlocks( void *inData, lfs_block_t block )
+{
+	static lfs_block_t maxBlock;
+	static uint32_t totBlock;
+	if ( nullptr == inData ) { // not null during traverse
+		uint32_t totRet = totBlock;
+		if ( 0 != block ) {
+			maxBlock = block;
+			totBlock = 0;
+		}
+		return totRet; // exit after init, end, or bad call
+	}
+	totBlock++;
+	if ( block > maxBlock ) return block; // this is beyond media blocks
+	uint32_t iiblk = block/8;
+	uint8_t jjbit = 1<<(block%8);
+	uint8_t *myData = (uint8_t *)inData;
+	myData[iiblk] = myData[iiblk] | jjbit;
+	return 0;
+}
+
+FLASHMEM
+uint32_t LittleFS::formatUnused(uint32_t blockCnt, uint32_t blockStart) {
+	if ( !configured ) return 0;
+	uint32_t iiblk = 1+(config.block_count /8);
+	uint8_t *checkused = (uint8_t *)malloc( iiblk );
+	if ( checkused == nullptr) return 0;
+	void *buffer = malloc(config.read_size);
+	if ( buffer == nullptr) {
+		free(checkused);
+		return 0;
+	}
+	memset(checkused, 0, iiblk);
+	cb_usedBlocks( nullptr, config.block_count ); // init and pass MAX block_count
+	int err = lfs_fs_traverse(&lfs, cb_usedBlocks, checkused); // on return 1 bits are used blocks
+
+	if ( err < 0 )
+	{
+		free(checkused);
+		free(buffer);
+		return 0;
+	}
+	uint32_t block=blockStart, jj=0;
+	if ( block >= config.block_count ) blockStart=0;
+	if ( 0 == blockCnt) blockCnt = config.block_count;
+	while ( block<config.block_count && jj<blockCnt ) {
+		iiblk = block/8;
+		uint8_t jjbit = 1<<(block%8);
+		if ( !(checkused[iiblk] & jjbit) ) { // block not in use
+			if ( !blockIsBlank(&config, block, buffer)) {
+				(*config.erase)(&config, block);
+				jj++;
+			}
+		}
+		block++;
+	}
+	free(checkused); // This discards LFS_(check)used list. If each Format by LFS were known we could add to a static copy.
+	// Traverse takes 2 to 20ms on each entry - some images and media may take longer
+	// TODO?: if kept and updated the 'free dirty blocks' could be ignored and traverse skipped until all prior dirty were formatted
+	free(buffer);
+	if ( block >= config.block_count ) block=0;
+	return block; // return lastChecked block to store to start next pass as blockStart
 }
 
 FLASHMEM
@@ -257,6 +404,14 @@ int LittleFS_SPIFlash::prog(lfs_block_t block, lfs_off_t offset, const void *buf
 int LittleFS_SPIFlash::erase(lfs_block_t block)
 {
 	if (!port) return LFS_ERR_IO;
+	void *buffer = malloc(config.read_size);
+	if ( buffer != nullptr) {
+		if ( blockIsBlank(&config, block, buffer)) {
+			free(buffer);
+			return 0; // Already formatted exit no wait
+		}
+		free(buffer);
+	}
 	const uint32_t addr = block * config.block_size;
 	const uint8_t cmd = (addrbits == 24) ? 0x20 : 0x21; // erase sector
 	uint8_t cmdaddr[5];
@@ -291,6 +446,103 @@ int LittleFS_SPIFlash::wait(uint32_t microseconds)
 	return 0; // success
 }
 
+
+
+int LittleFS_SPIFram::read(lfs_block_t block, lfs_off_t offset, void *buf, lfs_size_t size)
+{
+	if (!port) return LFS_ERR_IO;
+	const uint32_t addr = block * config.block_size + offset;
+
+  //FRAM READ OPERATION
+	uint8_t cmdaddr[5];
+	//Serial.printf("  addrbits=%d\n", addrbits);
+	make_command_and_address(cmdaddr, 0x03, addr, addrbits);
+	memset(buf, 0, size);
+	port->beginTransaction(SPICONFIG);
+	digitalWrite(pin,LOW);                     //chip select
+	port->transfer(cmdaddr, 1 + (addrbits >> 3));
+	port->transfer(buf, size);
+	digitalWrite(pin,HIGH);  //release chip, signal end of transfer
+	port->endTransaction();
+	
+	//printtbuf(buf, 20);
+	return 0;
+}
+
+int LittleFS_SPIFram::prog(lfs_block_t block, lfs_off_t offset, const void *buf, lfs_size_t size)
+{
+	if (!port) return LFS_ERR_IO;
+	const uint32_t addr = block * config.block_size + offset;
+
+  // F-RAM WRITE ENABLE COMMAND
+	uint8_t cmdaddr[5];
+	//Serial.printf("  addrbits=%d\n", addrbits);
+	make_command_and_address(cmdaddr, 0x02, addr, addrbits);
+  
+	port->beginTransaction(SPICONFIG);
+	digitalWrite(pin,LOW);  //chip select
+	delayNanoseconds(50);
+	SPI.transfer(0x06);    //transmit write enable opcode
+	digitalWrite(pin,HIGH); //release chip, signal end transfer
+	delayNanoseconds(50);
+	// F-RAM WRITE OPERATION
+	digitalWrite(pin,LOW);                  //chip select
+	port->transfer(cmdaddr, 1 + (addrbits >> 3));  
+	// Data byte transmission
+	port->transfer(buf, nullptr, size);
+	digitalWrite(pin,HIGH);                  //release chip, signal end of transfer
+	port->endTransaction();
+	
+	return 0;
+}
+
+int LittleFS_SPIFram::erase(lfs_block_t block)
+{
+	if (!port) return LFS_ERR_IO;
+	void *buffer = malloc(config.read_size);
+	if ( buffer != nullptr) {
+		if ( blockIsBlank(&config, block, buffer)) {
+			free(buffer);
+			return 0; // Already formatted exit no wait
+		}
+		free(buffer);
+	}
+	//Serial.printf("  flash er: block=%d\n", block);
+	uint8_t buf[256];
+	//for(uint32_t i = 0; i < config.block_size; i++) buf[i] = 0xFF;
+	memset(buf, 0xFF, config.block_size);
+	uint8_t cmdaddr[5];
+	const uint32_t addr = block * config.block_size;
+	make_command_and_address(cmdaddr, 0x02, addr, addrbits);
+	
+	// F-RAM WRITE ENABLE COMMAND
+	port->beginTransaction(SPICONFIG);
+	digitalWrite(pin,LOW);  //chip select
+	SPI.transfer(0x06);    //transmit write enable opcode
+	digitalWrite(pin,HIGH); //release chip, signal end transfer
+	delayNanoseconds(50);
+	// F-RAM WRITE OPERATION
+	digitalWrite(pin,LOW);                   //chip select
+	port->transfer(cmdaddr, 1 + (addrbits >> 3));  
+  
+	// Data byte transmission
+	port->transfer(buf, nullptr, config.block_size);
+	digitalWrite(pin,HIGH);                  //release chip, signal end of transfer
+	port->endTransaction();
+	
+	return 0;
+}
+
+int LittleFS_SPIFram::wait(uint32_t microseconds)
+{
+	elapsedMicros usec = 0;
+	while (1) {
+		if (usec > microseconds) break; // timeout
+		yield();
+	}
+	//Serial.printf("  waited %u us\n", (unsigned int)usec);
+	return 0; // success
+}
 
 
 
@@ -553,6 +805,14 @@ int LittleFS_QSPIFlash::prog(lfs_block_t block, lfs_off_t offset, const void *bu
 
 int LittleFS_QSPIFlash::erase(lfs_block_t block)
 {
+	void *buffer = malloc(config.read_size);
+	if ( buffer != nullptr) {
+		if ( blockIsBlank(&config, block, buffer)) {
+			free(buffer);
+			return 0; // Already formatted exit no wait
+		}
+		free(buffer);
+	}
 	flexspi2_ip_command(10, 0x00800000);
 	const uint32_t addr = block * config.block_size;
 	flexspi2_ip_command(12, 0x00800000 + addr);

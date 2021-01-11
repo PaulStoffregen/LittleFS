@@ -78,6 +78,7 @@ public:
 	uint8_t readECC(uint32_t address, uint8_t *data, int length);
 	void readBBLUT(uint16_t *LBA, uint16_t *PBA, uint8_t *linkStatus);
 	bool lowLevelFormat(char progressChar);
+	uint8_t addBBLUT(uint32_t block_address);  //temporary for testing
   
 private:
 	int read(lfs_block_t block, lfs_off_t offset, void *buf, lfs_size_t size);
@@ -107,7 +108,7 @@ private:
   void writeStatusRegister(uint8_t reg, uint8_t data);
   uint8_t readStatusRegister(uint16_t reg, bool dump);
   void loadPage(uint32_t address);
-  uint8_t addBBLUT(uint32_t address);
+
   void deviceReset();
   
 	SPIClass *port;
@@ -115,6 +116,8 @@ private:
 	uint8_t addrbits;
 	uint32_t progtime;
 	uint32_t erasetime;
+	uint32_t chipsize;
+	uint32_t blocksize;
 	
 private:
   uint8_t die = 0;      //die = 0: use first 1GB die PA[16], die = 1: use second 1GB die PA[16].
@@ -138,6 +141,7 @@ public:
 	uint8_t readECC(uint32_t targetPage, uint8_t *buf, int size);
 	void readBBLUT(uint16_t *LBA, uint16_t *PBA, uint8_t *linkStatus);
 	bool lowLevelFormat(char progressChar);
+	uint8_t addBBLUT(uint32_t block_address);  //temporary for testing
 	
 private:
 	int read(lfs_block_t block, lfs_off_t offset, void *buf, lfs_size_t size);
@@ -167,11 +171,12 @@ private:
   void eraseSector(uint32_t address);
   void writeStatusRegister(uint8_t reg, uint8_t data);
   uint8_t readStatusRegister(uint16_t reg, bool dump);
-  uint8_t addBBLUT(uint32_t address);
   
 	uint8_t addrbits;
 	uint32_t progtime;
 	uint32_t erasetime;
+	uint32_t chipsize;
+	uint32_t blocksize;
 	
 private:
   uint8_t die = 0;      //die = 0: use first 1GB die, die = 1: use second 1GB die.

@@ -133,6 +133,8 @@ bool LittleFS_SPINAND::begin(uint8_t cspin, SPIClass &spiport)
 	progtime = info->progtime;
 	erasetime = info->erasetime;
 	configured = true;
+	blocksize = info->erasesize;
+	chipsize = info->chipsize;
 
 	//Serial.println("attempting to mount existing media");
 	if (lfs_mount(&lfs, &config) < 0) {
@@ -227,7 +229,7 @@ int LittleFS_SPINAND::read(lfs_block_t block, lfs_off_t offset, void *buf, lfs_s
 	case 2: // Uncorrectable ECC in a single page
 	  //Serial.printf("Uncorrectable ECC in a single page (addr, code): %x, %x\n", addr, eccCode);
 	case 3: // Uncorrectable ECC in multiple pages
-	  addBBLUT(addr);
+	  addBBLUT(LINEAR_TO_BLOCK(addr));
 	  //deviceReset();
 	  //Serial.printf("Uncorrectable ECC in a multipe pages (addr, code): %x, %x\n", addr, eccCode);
 	  break;
@@ -571,7 +573,7 @@ uint8_t LittleFS_SPINAND::readECC(uint32_t targetPage, uint8_t *data, int length
 	  case 3: // Uncorrectable ECC in multiple pages
 		//addError(address, eccCode);
 		//Serial.printf("ECC Error (addr, code): %x, %x\n", address, eccCode);
-		addBBLUT(targetPage*eccSize);
+		addBBLUT(LINEAR_TO_BLOCK(targetPage*eccSize));
 		//deviceReset();
 		break;
 	}
@@ -621,7 +623,7 @@ void LittleFS_SPINAND::readBBLUT(uint16_t *LBA, uint16_t *PBA, uint8_t *linkStat
     //Serial.printf("OpenEntries: %d\n", openEntries);
 }
 
-uint8_t LittleFS_SPINAND::addBBLUT(uint32_t address)
+uint8_t LittleFS_SPINAND::addBBLUT(uint32_t block_address)
 {
   if(deviceID == W25N01) {
 	//check BBLUT FULL
@@ -657,8 +659,8 @@ uint8_t LittleFS_SPINAND::addBBLUT(uint32_t address)
 	//Need to determine if the address is already in the list and what the first open entry is.
 	for(uint16_t i = 0; i < 20; i++){
 		if(LUT_STATUS[i] > 0) {
-			if(LBA[i] == LINEAR_TO_BLOCK(address)) {
-				Serial.printf("Address: %d, already in BBLUT!\n");
+			if(LBA[i] == block_address) {
+				Serial.printf("Address: %d, already in BBLUT!\n", block_address);
 				return 0;
 			}
 		}
@@ -671,9 +673,8 @@ uint8_t LittleFS_SPINAND::addBBLUT(uint32_t address)
 	uint8_t cmd[5];
 	
 	uint16_t pba, lba;
-	pba = LINEAR_TO_BLOCK(address);
-	//lba = LINEAR_TO_BLOCK((firstOpenEntry+1)*config.block_size);
-	lba = LINEAR_TO_BLOCK((firstOpenEntry+1)*131072);
+	pba = block_address;
+	lba = LINEAR_TO_BLOCK((firstOpenEntry+1)*blocksize + chipsize);
 	Serial.printf("PBA: %d, LBA: %d\n", pba, lba);
 	
 	cmd[0] = 0xA1;
@@ -931,6 +932,8 @@ bool LittleFS_QPINAND::begin() {
 	progtime = info->progtime;
 	erasetime = info->erasetime;
 	configured = true;
+	blocksize = info->erasesize;
+	chipsize = info->chipsize;
 	
   // cmd index 8 = read Status register
   // set in function readStatusRegister(uint8_t reg, bool dump)
@@ -1051,7 +1054,7 @@ int LittleFS_QPINAND::read(lfs_block_t block, lfs_off_t offset, void *buf, lfs_s
       //Serial.printf("Uncorrectable ECC in a single page (addr, code): %x, %x\n", address, eccCode);
     case 3: // Uncorrectable ECC in multiple pages
       //Serial.printf("Uncorrectable ECC in a single page (addr, code): %x, %x\n", address, eccCode);
-	  addBBLUT(address);
+	  addBBLUT(LINEAR_TO_BLOCK(address));
 	  //deviceReset();
 	  break;
 
@@ -1307,7 +1310,7 @@ uint8_t LittleFS_QPINAND::readECC(uint32_t targetPage, uint8_t *buf, int size)
 	  case 3: // Uncorrectable ECC in multiple pages
 		//addError(address, eccCode);
 		//Serial.printf("ECC Error (addr, code): %x, %x\n", address, eccCode);
-		addBBLUT(targetPage*eccSize);
+		addBBLUT(LINEAR_TO_BLOCK(targetPage*eccSize));
 		//deviceReset();
 		break;
 	}
@@ -1352,7 +1355,7 @@ void LittleFS_QPINAND::readBBLUT(uint16_t *LBA, uint16_t *PBA, uint8_t *linkStat
     //Serial.printf("OpenEntries: %d\n", openEntries);
 }
 
-uint8_t LittleFS_QPINAND::addBBLUT(uint32_t address)
+uint8_t LittleFS_QPINAND::addBBLUT(uint32_t block_address)
 {
   if(deviceID == W25N01) {
 	//check BBLUT FULL
@@ -1388,8 +1391,8 @@ uint8_t LittleFS_QPINAND::addBBLUT(uint32_t address)
 	//Need to determine if the address is already in the list and what the first open entry is.
 	for(uint16_t i = 0; i < 20; i++){
 		if(LUT_STATUS[i] > 0) {
-			if(LBA[i] == LINEAR_TO_BLOCK(address)) {
-				Serial.printf("Address: %d, already in BBLUT!\n");
+			if(LBA[i] == block_address) {
+				Serial.printf("Address: %d, already in BBLUT!\n", block_address);
 				return 0;
 			}
 		}
@@ -1400,9 +1403,9 @@ uint8_t LittleFS_QPINAND::addBBLUT(uint32_t address)
 	
 	//Write BBLUT with next sequential block
 	uint16_t pba, lba;
-	pba = LINEAR_TO_BLOCK(address);
+	pba = block_address;
 	//lba = LINEAR_TO_BLOCK((firstOpenEntry+1)*config.block_size);
-	lba = LINEAR_TO_BLOCK((firstOpenEntry+1)*131072);
+	lba = LINEAR_TO_BLOCK((firstOpenEntry+1)*blocksize + chipsize);
 	Serial.printf("PBA: %d, LBA: %d\n", pba, lba);
 	
 	uint8_t cmd[4];

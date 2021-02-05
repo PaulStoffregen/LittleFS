@@ -26,7 +26,6 @@
 #include <SPI.h>
 #include "littlefs/lfs.h"
 
-
 class LittleFSFile : public File
 {
 private:
@@ -201,6 +200,7 @@ public:
 	}
 	bool quickFormat();
 	bool lowLevelFormat(char progressChar=0);
+	uint32_t formatUnused(uint32_t blockCnt, uint32_t blockStart);
 	File open(const char *filepath, uint8_t mode = FILE_READ) {
 		//Serial.println("LittleFS open");
 		if (!mounted) return File();
@@ -307,13 +307,24 @@ public:
 		config.prog = &static_prog;
 		config.erase = &static_erase;
 		config.sync = &static_sync;
-		config.read_size = 64;
-		config.prog_size = 64;
-		config.block_size = 256;
-		config.block_count = size / 256;
-		config.block_cycles = 50;
-		config.cache_size = 64;
-		config.lookahead_size = 64;
+		if ( size > 1024*1024 ) {
+			config.read_size = 256; // Must set cache_size. If read_buffer or prog_buffer are provided manually, these must be cache_size.
+			config.prog_size = 256;
+			config.block_size = 2048;
+			config.block_count = size / config.block_size;
+			config.block_cycles = 900;
+			config.cache_size = 256;
+			config.lookahead_size = 512; // (config.block_count / 8 + 7) & 0xFFFFFFF8;
+		}
+		else {
+			config.read_size = 64;
+			config.prog_size = 64;
+			config.block_size = 256;
+			config.block_count = size / 256;
+			config.block_cycles = 50;
+			config.cache_size = 64;
+			config.lookahead_size = 64;
+		}
 		config.name_max = LFS_NAME_MAX;
 		config.file_max = 0;
 		config.attr_max = 0;
@@ -325,24 +336,28 @@ public:
 		mounted = true;
 		return true;
 	}
+	FLASHMEM
+	uint32_t formatUnused(uint32_t blockCnt, uint32_t blockStart) {
+		return 0;
+	}
 private:
 	static int static_read(const struct lfs_config *c, lfs_block_t block,
 	  lfs_off_t offset, void *buffer, lfs_size_t size) {
 		//Serial.printf("    ram rd: block=%d, offset=%d, size=%d\n", block, offset, size);
-		uint32_t index = block * 256 + offset;
+		uint32_t index = block * c->block_size + offset;
 		memcpy(buffer, (uint8_t *)(c->context) + index, size);
 		return 0;
 	}
 	static int static_prog(const struct lfs_config *c, lfs_block_t block,
 	  lfs_off_t offset, const void *buffer, lfs_size_t size) {
 		//Serial.printf("    ram wr: block=%d, offset=%d, size=%d\n", block, offset, size);
-		uint32_t index = block * 256 + offset;
+		uint32_t index = block * c->block_size + offset;
 		memcpy((uint8_t *)(c->context) + index, buffer, size);
 		return 0;
 	}
 	static int static_erase(const struct lfs_config *c, lfs_block_t block) {
-		uint32_t index = block * 256;
-		memset((uint8_t *)(c->context) + index, 0xFF, 256);
+		uint32_t index = block * c->block_size;
+		memset((uint8_t *)(c->context) + index, 0xFF, c->block_size);
 		return 0;
 	}
 	static int static_sync(const struct lfs_config *c) {
@@ -380,6 +395,47 @@ private:
 	static int static_sync(const struct lfs_config *c) {
 		return 0;
 	}
+	SPIClass *port;
+	uint8_t pin;
+	uint8_t addrbits;
+	uint32_t progtime;
+	uint32_t erasetime;
+};
+
+
+
+class LittleFS_SPIFram : public LittleFS
+{
+public:
+	LittleFS_SPIFram() {
+		port = nullptr;
+	}
+	bool begin(uint8_t cspin, SPIClass &spiport=SPI);
+private:
+	int read(lfs_block_t block, lfs_off_t offset, void *buf, lfs_size_t size);
+	int prog(lfs_block_t block, lfs_off_t offset, const void *buf, lfs_size_t size);
+	int erase(lfs_block_t block);
+	int wait(uint32_t microseconds);
+	static int static_read(const struct lfs_config *c, lfs_block_t block,
+	  lfs_off_t offset, void *buffer, lfs_size_t size) {
+		//Serial.printf("  flash rd: block=%d, offset=%d, size=%d\n", block, offset, size);
+		return ((LittleFS_SPIFram *)(c->context))->read(block, offset, buffer, size);
+	}
+	static int static_prog(const struct lfs_config *c, lfs_block_t block,
+	  lfs_off_t offset, const void *buffer, lfs_size_t size) {
+		//Serial.printf("  flash wr: block=%d, offset=%d, size=%d\n", block, offset, size);
+		return ((LittleFS_SPIFram *)(c->context))->prog(block, offset, buffer, size);
+	}
+	static int static_erase(const struct lfs_config *c, lfs_block_t block) {
+		//Serial.printf("  flash er: block=%d\n", block);
+		return ((LittleFS_SPIFram *)(c->context))->erase(block);
+	}
+	static int static_sync(const struct lfs_config *c) {
+		return 0;
+	}
+	
+	
+	
 	SPIClass *port;
 	uint8_t pin;
 	uint8_t addrbits;

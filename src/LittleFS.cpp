@@ -286,7 +286,17 @@ uint32_t LittleFS::formatUnused(uint32_t blockCnt, uint32_t blockStart) {
 	memset(checkused, 0, iiblk);
 	cb_usedBlocks( nullptr, config.block_count ); // init and pass MAX block_count
 	int err = lfs_fs_traverse(&lfs, cb_usedBlocks, checkused); // on return 1 bits are used blocks
-
+#ifdef DEBUGCF_2
+	uint32_t totBlock = cb_usedBlocks( nullptr, 0 ); // get total blocks used
+	Serial.printf( "\n\n formatUnused() checkUsed: lfs Used Blocks Map: #used is %lu : lfs traverse return %i (neg on err)\n", totBlock, err );
+	uint32_t *fakeU = (uint32_t *)checkused;
+	uint32_t ff=0;
+	for (unsigned int block=0; block < config.block_count; block++) {
+		if ( (block/8)>3 && (0==(block/8)%4) && 0==block%8 ) Serial.printf( "\t0x%lx", fakeU[ff++]);
+		if ( !((block/8)%40) && 0==block%8 ) Serial.printf( "\n%u", block );
+	}
+	Serial.printf( "\n checkUsed:: lfs Used Blocks Map: #used is %lu\n", totBlock );
+#endif
 	if ( err < 0 )
 	{
 		free(checkused);

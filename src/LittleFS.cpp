@@ -107,6 +107,7 @@ bool LittleFS_SPIFlash::begin(uint8_t cspin, SPIClass &spiport)
 	config.block_cycles = 400;
 	config.cache_size = info->progsize;
 	config.lookahead_size = info->progsize;
+	// config.lookahead_size = config.block_count/8;
 	config.name_max = LFS_NAME_MAX;
 	addrbits = info->addrbits;
 	progtime = info->progtime;
@@ -237,7 +238,8 @@ bool LittleFS::quickFormat()
 	return true;
 }
 
-static bool blockIsBlank(struct lfs_config *config, lfs_block_t block, void *readBuf)
+static bool blockIsBlank(struct lfs_config *config, lfs_block_t block, void *readBuf, bool full=true );
+static bool blockIsBlank(struct lfs_config *config, lfs_block_t block, void *readBuf, bool full )
 {
 	if (!readBuf) return false;
 	for (lfs_off_t offset=0; offset < config->block_size; offset += config->read_size) {
@@ -247,6 +249,8 @@ static bool blockIsBlank(struct lfs_config *config, lfs_block_t block, void *rea
 		for (unsigned int i=0; i < config->read_size; i++) {
 			if (buf[i] != 0xFF) return false;
 		}
+		if ( !full )
+			return true; // first bytes read as 0xFF
 	}
 	return true; // all bytes read as 0xFF
 }
@@ -286,17 +290,7 @@ uint32_t LittleFS::formatUnused(uint32_t blockCnt, uint32_t blockStart) {
 	memset(checkused, 0, iiblk);
 	cb_usedBlocks( nullptr, config.block_count ); // init and pass MAX block_count
 	int err = lfs_fs_traverse(&lfs, cb_usedBlocks, checkused); // on return 1 bits are used blocks
-#ifdef DEBUGCF_2
-	uint32_t totBlock = cb_usedBlocks( nullptr, 0 ); // get total blocks used
-	Serial.printf( "\n\n formatUnused() checkUsed: lfs Used Blocks Map: #used is %lu : lfs traverse return %i (neg on err)\n", totBlock, err );
-	uint32_t *fakeU = (uint32_t *)checkused;
-	uint32_t ff=0;
-	for (unsigned int block=0; block < config.block_count; block++) {
-		if ( (block/8)>3 && (0==(block/8)%4) && 0==block%8 ) Serial.printf( "\t0x%lx", fakeU[ff++]);
-		if ( !((block/8)%40) && 0==block%8 ) Serial.printf( "\n%u", block );
-	}
-	Serial.printf( "\n checkUsed:: lfs Used Blocks Map: #used is %lu\n", totBlock );
-#endif
+
 	if ( err < 0 )
 	{
 		free(checkused);
@@ -310,7 +304,7 @@ uint32_t LittleFS::formatUnused(uint32_t blockCnt, uint32_t blockStart) {
 		iiblk = block/8;
 		uint8_t jjbit = 1<<(block%8);
 		if ( !(checkused[iiblk] & jjbit) ) { // block not in use
-			if ( !blockIsBlank(&config, block, buffer)) {
+			if ( !blockIsBlank(&config, block, buffer, false )) {
 				(*config.erase)(&config, block);
 				jj++;
 			}
@@ -721,6 +715,7 @@ bool LittleFS_QSPIFlash::begin()
 	config.block_cycles = 400;
 	config.cache_size = info->progsize;
 	config.lookahead_size = info->progsize;
+	//config.lookahead_size = config.block_count/8;
 	config.name_max = LFS_NAME_MAX;
 	addrbits = info->addrbits;
 	progtime = info->progtime;

@@ -1,19 +1,18 @@
 //#include <LittleFS.h>
 #include <LittleFS_NAND.h>
 
-//#define RELEASE // Use this to exclude defragster new functions not in Beta5
-
 #define HALFCUT  // HALFCUT defined to fill half the disk
-#define ROOTONLY // NORMAL is NOT DEFINED!
+//#define ROOTONLY // NORMAL is NOT DEFINED!
 #define NUMDIRS 32  // When not ROOTONLY must be 1 or more
 #define MYPSRAM 8	// compile time PSRAM size
 #define MYBLKSIZE 2048 // 2048
+//#define SHOW_YIELD_CNT  1 // uncommented shows calls to Yield per second
 
 //#define TEST_RAM
 //#define TEST_SPI
-//#define TEST_QSPI
+#define TEST_QSPI
 //#define TEST_SPI_NAND
-#define TEST_QSPI_NAND
+//#define TEST_QSPI_NAND
 //#define TEST_PROG
 //#define TEST_MRAM
 
@@ -23,9 +22,11 @@ uint32_t yCallsMax = 0;
 uint32_t yCallsLast = 0;
 uint32_t yCallsIdx = 0;
 uint32_t yCallsSum = 0;
+#ifdef SHOW_YIELD_CNT
 void yield() {
 	yCalls++;
 }
+#endif
 void clock_isr() {
 	yCallsIdx++;
 	if ( yCallsIdx >= 100 ) {
@@ -42,7 +43,7 @@ void clock_isr() {
 
 // Set for SPI usage
 //const int FlashChipSelect = 10; // AUDIO BOARD
-const int FlashChipSelect = 3; // PJRC Mem board 64MB on #5, #6 : NAND 1Gb on #3, 2GB on #4
+const int FlashChipSelect = 4; // PJRC Mem board 64MB on #5, #6 : NAND 1Gb on #3, 2GB on #4
 //const int FlashChipSelect = 5; // PJRC Mem board 64MB on #5, #6 : NAND 1Gb on #3, 2GB on #4
 //const int FlashChipSelect = 6; // digital pin for flash chip CS pin
 
@@ -81,7 +82,7 @@ char szDiskMem[] = "QSPI_DISK";
 File file3;
 
 uint32_t DELSTART = 3; // originally was 3 + higher bias more to writes and larger files - lower odd
-#define SUBADD 4096	// bytes added each pass (*times file number)
+#define SUBADD 512	// bytes added each pass (*times file number)
 #define BIGADD 1024	// bytes added each pass - bigger will quickly consume more space
 #define MAXNUM 26	// ALPHA A-Z is 26, less for fewer files
 #define MAXFILL 2048 // 66000	// ZERO to disable :: Prevent iterations from over filling - require this much free
@@ -141,9 +142,14 @@ void setup() {
 	checkInput( 1 );
 	filecount = printDirectoryFilecount( myfs.open("/") );  // Set base value of filecount for disk
 	printDirectory();
+#ifdef SHOW_YIELD_CNT
 	clocked10ms.begin(clock_isr, 10000);
+#endif
 	while ( 1 ) {
-		loopX();
+		loopX(); // Avoid end of loop() yield so the clock_isr() isn't noisy when used.
+#ifndef SHOW_YIELD_CNT
+		yield(); // simulate normal exec
+#endif
 	}
 }
 
@@ -181,11 +187,11 @@ void loopX() {
 			else
 				sprintf( szDir, "/%lu_dir", ii );
 			chStep = fileCycle(szDir);
-//			if ( bAutoFormat && !(lCnt % 5) ) res = myfs.formatUnused( 20, res );
-			if ( bAutoFormat && !(lCnt % 20) ) res = myfs.formatUnused( 6, res );
+			if ( bAutoFormat && !(lCnt % 5) ) res = loopAutoFormat( 20, res );
+//			if ( bAutoFormat && !(lCnt % 20) ) res = loopAutoFormat( 6, res );
 			while ( chStep != fileCycle(szDir) && ( loopLimit != 0 ) ) {
-				//if ( bAutoFormat && !(lCnt % 5) ) res = myfs.formatUnused( 20, res );
-				if ( bAutoFormat && !(lCnt % 20) ) res = myfs.formatUnused( 6, res );
+				if ( bAutoFormat && !(lCnt % 5) ) res = loopAutoFormat( 12, res ); // how often and how many depends on media and sizes
+				//if ( bAutoFormat && !(lCnt % 20) ) res = loopAutoFormat( 6, res );
 				checkInput( 0 ); // user input can 0 loopLimit
 			}
 		}
@@ -196,8 +202,15 @@ void loopX() {
 	else
 		checkInput( 1 );
 }
+uint32_t loopAutoFormat( uint32_t cnt, uint32_t myres ) {
+	uint32_t retres;
+	retres = myfs.formatUnused( cnt, myres );
+	Serial.printf("\t fmtU @ %lu - %lu \n", myres, retres );
+	return retres;
 
-char szInputs[] = "0123456789RdcghkFqvplmusSBbyYxfan+-?";
+}
+
+char szInputs[] = "0123456789RdwcghkFqvplmusSBbyYxfan+-?";
 uint32_t lastTime;
 void checkInput( int step ) { // prompt for input without user input with step != 0
 	uint32_t nowTime = micros();
@@ -235,12 +248,14 @@ void checkInput( int step ) { // prompt for input without user input with step !
 }
 void parseCmd( char chIn ) { // pass chIn == '?' for help
 	uint32_t timeMe;
+		char szNone[]="";
 	switch (chIn ) {
 	case '?':
 		Serial.printf( "%s\n", " 0, 1-9 '#' passes continue loop before Pause\n\
  'a' Auto formatUnused() during iterations - TOGGLE\n\
  'R' Restart Teensy\n\
  'd' Directory of LittleFS\n\
+ 'w' WIPE Directory of LittleFS\n\
  'b' big file delete\n\
  'B' BIG FILE MAKE\n\
  'S' FILE 2MB MAKE\n\
@@ -250,7 +265,7 @@ void parseCmd( char chIn ) { // pass chIn == '?' for help
  'h' Hundred loops\n\
  'k' Thousand loops\n\
  'F' LittleFS_ Low Level Format Disk \n\
- 'f'__LittleFS::formatUnused( ALL ) : DATA PRESERVED \n\
+ 'f' LittleFS::formatUnused( ALL ) : DATA PRESERVED \n\
  'q' LittleFS_ Quick Format Disk \n\
  'v' Verbose All Dir Prints - TOGGLE\n\
  'p' Pause after all Dir prints - TOGGLE\n\
@@ -261,10 +276,9 @@ void parseCmd( char chIn ) { // pass chIn == '?' for help
  'n' No verify on Write- TOGGLE\n\
  '+' more add to delete cycles\n\
  '-' fewer add to delete cycles\n\
- 'y'__reclaim 1 block :: myfs.formatUnused( 1 )\n\
- 'Y'__reclaim 15 blocks :: myfs.formatUnused( 15 )\n\
- '?' Help list\n\
- >> ITEMS '~'__ : double underbar : NO FUNCTION w/ RELEASE <<" );
+ 'y' reclaim 1 block :: myfs.formatUnused( 1 )\n\
+ 'Y' reclaim 15 blocks :: myfs.formatUnused( 15 )\n\
+ '?' Help list" );
 		break;
 	case 'R':
 		Serial.print(" RESTART Teensy ...");
@@ -319,6 +333,14 @@ void parseCmd( char chIn ) { // pass chIn == '?' for help
 		parseCmd( 'l' );
 		checkInput( 1 );
 		chIn = 0;
+		break;
+	case 'w':
+		Serial.println("\nWipe All Files and DIRS:");
+		deleteAllDirectory(myfs.open("/"), szNone );
+		errsLFS = 0; // No Errors on new Format
+		warnLFS = 0; // No warning on new Format
+		chIn = 0;
+		parseCmd( 'u' );
 		break;
 	case 'h':
 		loopLimit = 100;
@@ -377,9 +399,7 @@ void parseCmd( char chIn ) { // pass chIn == '?' for help
 		lastTime = micros();
 		Serial.printf( "\n myfs.formatUnused( 1 ) ...\n" );
 		timeMe = micros();
-#ifndef RELEASE
 		res = myfs.formatUnused( 1, res );
-#endif
 		timeMe = micros() - timeMe;
 		Serial.printf( "\n\t formatUnused :: Done Formatting Low Level in %lu us (last %lu).\n", timeMe, res );
 		chIn = 0;
@@ -388,9 +408,7 @@ void parseCmd( char chIn ) { // pass chIn == '?' for help
 		lastTime = micros();
 		Serial.printf( "\n myfs.formatUnused( 15 ) ...\n" );
 		timeMe = micros();
-#ifndef RELEASE
 		res = myfs.formatUnused( 15, res );
-#endif
 		timeMe = micros() - timeMe;
 		Serial.printf( "\n\t formatUnused :: Done Formatting Low Level in %lu us (last %lu).\n", timeMe, res );
 		chIn = 0;
@@ -399,9 +417,7 @@ void parseCmd( char chIn ) { // pass chIn == '?' for help
 		lastTime = micros();
 		Serial.printf( "\n myfs.formatUnused( 0 ) ...\n" );
 		timeMe = micros();
-#ifndef RELEASE
 		myfs.formatUnused( 0, 0 );
-#endif
 		timeMe = micros() - timeMe;
 		Serial.printf( "\n\t formatUnused :: Done Formatting Low Level in %lu us.\n", timeMe );
 		chIn = 0;
@@ -451,6 +467,39 @@ void printDirectory() {
 	printDirectory(myfs.open("/"), 0);
 	Serial.printf(" %Total %u files of Size %u Bytes\n", fTot, totSize);
 	Serial.printf("Bytes Used: %llu, Bytes Total:%llu\n", myfs.usedSize(), myfs.totalSize());
+}
+
+void deleteAllDirectory(File dir, char *fullPath ) {
+	char myPath[ 256 ] = "";
+	while (true) {
+		File entry =  dir.openNextFile();
+		if (! entry) {
+			// no more files
+			break;
+		}
+		if (entry.isDirectory()) {
+			strcpy( myPath, fullPath);
+			strcat( myPath, entry.name());
+			strcat( myPath, "/");
+			deleteAllDirectory(entry, myPath);
+			entry.close();
+			if ( !myfs.remove( myPath ) )
+				Serial.print( "  Fail remove DIR>\t");
+			else
+				Serial.print( "  Removed DIR>\t");
+			Serial.println( myPath );
+
+		} else {
+			strcpy( myPath, fullPath);
+			strcat( myPath, entry.name());
+			entry.close();
+			if ( !myfs.remove( myPath ) )
+				Serial.print( "\tFail remove>\t");
+			else
+				Serial.print( "\tRemoved>\t");
+			Serial.println( myPath );
+		}
+	}
 }
 
 int printDirectoryFilecount(File dir) {
@@ -874,7 +923,7 @@ const uint8_t READ_COUNT = 5;
 
 // Insure 4-byte alignment.
 uint32_t buf32[(BUF_SIZE + 3) / 4];
-uint8_t* buf = (uint8_t*)buf32;
+uint8_t* bufA32 = (uint8_t*)buf32;
 
 //Number of random reads
 #define randomReads 1
@@ -894,11 +943,11 @@ void speedBench() {
 	// fill buf with known data
 	if (BUF_SIZE > 1) {
 		for (size_t i = 0; i < (BUF_SIZE - 2); i++) {
-			buf[i] = 'A' + (i % 26);
+			bufA32[i] = 'A' + (i % 26);
 		}
-		buf[BUF_SIZE - 2] = '\r';
+		bufA32[BUF_SIZE - 2] = '\r';
 	}
-	buf[BUF_SIZE - 1] = '\n';
+	bufA32[BUF_SIZE - 1] = '\n';
 
 	Serial.printf("%s Disk Stats:", szDiskMem );
 	Serial.printf("Bytes Used: %llu, Bytes Total:%llu\n", myfs.usedSize(), myfs.totalSize());
@@ -927,7 +976,7 @@ void speedBench() {
 
 		for (uint32_t i = 0; i < n; i++) {
 			uint32_t m = micros();
-			if (file.write(buf, BUF_SIZE) != BUF_SIZE) {
+			if (file.write(bufA32, BUF_SIZE) != BUF_SIZE) {
 				Serial.println("write failed");
 			}
 			m = micros() - m;
@@ -964,15 +1013,15 @@ void speedBench() {
 		skipLatency = SKIP_FIRST_LATENCY;
 		t = micros();
 		for (uint32_t i = 0; i < n; i++) {
-			buf[BUF_SIZE - 1] = 0;
+			bufA32[BUF_SIZE - 1] = 0;
 			uint32_t m = micros();
-			int32_t nr = file.read(buf, BUF_SIZE);
+			int32_t nr = file.read(bufA32, BUF_SIZE);
 			if (nr != BUF_SIZE) {
 				Serial.println("read failed");
 			}
 			m = micros() - m;
 			totalLatency += m;
-			if (buf[BUF_SIZE - 1] != '\n') {
+			if (bufA32[BUF_SIZE - 1] != '\n') {
 				Serial.println("data check error");
 			}
 			if (skipLatency) {
@@ -1013,7 +1062,7 @@ void speedBench() {
 		skipLatency = SKIP_FIRST_LATENCY;
 		t = micros();
 		for (uint32_t i = 0; i < randomReads; i++) {
-			buf[BUF_SIZE - 1] = 0;
+			bufA32[BUF_SIZE - 1] = 0;
 			uint32_t m = micros();
 			uint32_t block_pos = random(0, (n - 1));
 			uint32_t random_pos = block_pos * MYBLKSIZE;
@@ -1021,7 +1070,7 @@ void speedBench() {
 			cout << block_pos << endl;
 			uint32_t startCNT = ARM_DWT_CYCCNT;
 			file.seek(random_pos);
-			int32_t nr = file.read(buf, BUF_SIZE);
+			int32_t nr = file.read(bufA32, BUF_SIZE);
 			uint32_t endCNT = ARM_DWT_CYCCNT;
 			cout << F("Read Time (ARM Cycle Delta): ") << endCNT - startCNT << endl;
 			if (nr != BUF_SIZE) {
@@ -1029,7 +1078,7 @@ void speedBench() {
 			}
 			m = micros() - m;
 			totalLatency += m;
-			if (buf[BUF_SIZE - 1] != '\n') {
+			if (bufA32[BUF_SIZE - 1] != '\n') {
 				Serial.println("data check error");
 			}
 			if (skipLatency) {

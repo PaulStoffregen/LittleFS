@@ -107,6 +107,7 @@ bool LittleFS_SPIFlash::begin(uint8_t cspin, SPIClass &spiport)
 	config.block_cycles = 400;
 	config.cache_size = info->progsize;
 	config.lookahead_size = info->progsize;
+	// config.lookahead_size = config.block_count/8;
 	config.name_max = LFS_NAME_MAX;
 	addrbits = info->addrbits;
 	progtime = info->progtime;
@@ -237,7 +238,8 @@ bool LittleFS::quickFormat()
 	return true;
 }
 
-static bool blockIsBlank(struct lfs_config *config, lfs_block_t block, void *readBuf)
+static bool blockIsBlank(struct lfs_config *config, lfs_block_t block, void *readBuf, bool full=true );
+static bool blockIsBlank(struct lfs_config *config, lfs_block_t block, void *readBuf, bool full )
 {
 	if (!readBuf) return false;
 	for (lfs_off_t offset=0; offset < config->block_size; offset += config->read_size) {
@@ -247,6 +249,8 @@ static bool blockIsBlank(struct lfs_config *config, lfs_block_t block, void *rea
 		for (unsigned int i=0; i < config->read_size; i++) {
 			if (buf[i] != 0xFF) return false;
 		}
+		if ( !full )
+			return true; // first bytes read as 0xFF
 	}
 	return true; // all bytes read as 0xFF
 }
@@ -300,7 +304,7 @@ uint32_t LittleFS::formatUnused(uint32_t blockCnt, uint32_t blockStart) {
 		iiblk = block/8;
 		uint8_t jjbit = 1<<(block%8);
 		if ( !(checkused[iiblk] & jjbit) ) { // block not in use
-			if ( !blockIsBlank(&config, block, buffer)) {
+			if ( !blockIsBlank(&config, block, buffer, false )) {
 				(*config.erase)(&config, block);
 				jj++;
 			}
@@ -711,6 +715,7 @@ bool LittleFS_QSPIFlash::begin()
 	config.block_cycles = 400;
 	config.cache_size = info->progsize;
 	config.lookahead_size = info->progsize;
+	//config.lookahead_size = config.block_count/8;
 	config.name_max = LFS_NAME_MAX;
 	addrbits = info->addrbits;
 	progtime = info->progtime;

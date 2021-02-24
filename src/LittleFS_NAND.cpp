@@ -81,14 +81,14 @@ bool LittleFS_SPINAND::begin(uint8_t cspin, SPIClass &spiport)
 	digitalWrite(pin, HIGH);
 	port->endTransaction();
 
-	Serial.printf("Flash ID: %02X %02X %02X\n", buf[2], buf[3], buf[4]);
+	//Serial.printf("Flash ID: %02X %02X %02X\n", buf[2], buf[3], buf[4]);
 	const struct chipinfo *info = chip_lookup(buf+2);
 	if (!info) return false;
-	Serial.printf("Flash size is %.2f Mbyte\n", (float)info->chipsize / 1048576.0f);
+	//Serial.printf("Flash size is %.2f Mbyte\n", (float)info->chipsize / 1048576.0f);
 	
 	//capacityID = buf[3];   //W25N01G has 1 die, W25N02G had 2 dies
 	deviceID = (buf[2] << 16) | (buf[3] << 8) | (buf[4]);
-	Serial.printf("Device ID: 0x%6X\n", deviceID);
+	//Serial.printf("Device ID: 0x%6X\n", deviceID);
 	
 	if(deviceID == W25N01) { 
 		die = 1;
@@ -166,7 +166,8 @@ static void printtbuf(const void *buf, unsigned int len)
 	//Serial.println();
 }
 
-static bool blockIsBlank(struct lfs_config *config, lfs_block_t block, void *readBuf)
+static bool blockIsBlank(struct lfs_config *config, lfs_block_t block, void *readBuf, bool full=true );
+static bool blockIsBlank(struct lfs_config *config, lfs_block_t block, void *readBuf, bool full)
 {
 	if (!readBuf) return false;
 	for (lfs_off_t offset=0; offset < config->block_size; offset += config->read_size) {
@@ -177,6 +178,8 @@ static bool blockIsBlank(struct lfs_config *config, lfs_block_t block, void *rea
 		for (unsigned int i=0; i < config->read_size; i++) {
 			if (buf[i] != 0xFF) return false;
 		}
+		if ( !full )
+			return true; // first bytes read as 0xFF
 	}
 	return true; // all bytes read as 0xFF
 }
@@ -897,7 +900,7 @@ bool LittleFS_QPINAND::begin() {
 	
 	//capacityID = buf[3];   //W25N01G has 1 die, W25N02G had 2 dies
 	deviceID = (buf[1] << 16) | (buf[2] << 8) | (buf[3]);
-	Serial.printf("Device ID: 0x%6X\n", deviceID);
+	//Serial.printf("Device ID: 0x%6X\n", deviceID);
 	
 	if(deviceID == W25N01) { 
 		die = 1;
@@ -974,7 +977,7 @@ bool LittleFS_QPINAND::begin() {
   writeStatusRegister(0xB0, (1 << 4) | (1 << 3));
   readStatusRegister(0xB0, false);
   
-	Serial.println("attempting to mount existing media");
+	//Serial.println("attempting to mount existing media");
 	if (lfs_mount(&lfs, &config) < 0) {
 		Serial.println("couldn't mount media, attemping to format");
 		if (lfs_format(&lfs, &config) < 0) {

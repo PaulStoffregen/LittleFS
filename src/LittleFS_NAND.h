@@ -77,7 +77,7 @@ public:
 	bool begin(uint8_t cspin, SPIClass &spiport=SPI);
 	uint8_t readECC(uint32_t address, uint8_t *data, int length);
 	void readBBLUT(uint16_t *LBA, uint16_t *PBA, uint8_t *linkStatus);
-	bool lowLevelFormat(char progressChar);
+	bool lowLevelFormat(char progressChar, Print* pr=&Serial);
 	uint8_t addBBLUT(uint32_t block_address);  //temporary for testing
   
 private:

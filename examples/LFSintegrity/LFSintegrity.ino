@@ -129,7 +129,8 @@ void setup() {
 #else
 	if (!myfs.begin()) {
 #endif
-		Serial.printf("Error starting %s\n", szDiskMem);
+		Serial.printf("\nError starting %s\n", szDiskMem);
+		while(1);
 		checkInput( 1 );
 	}
 	// parseCmd( 'F' ); // ENABLE this if disk won't allow startup

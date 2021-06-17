@@ -199,7 +199,7 @@ public:
 		config.context = nullptr;
 	}
 	bool quickFormat();
-	bool lowLevelFormat(char progressChar=0);
+	bool lowLevelFormat(char progressChar=0, Print* pr=&Serial);
 	uint32_t formatUnused(uint32_t blockCnt, uint32_t blockStart);
 	File open(const char *filepath, uint8_t mode = FILE_READ) {
 		//Serial.println("LittleFS open");

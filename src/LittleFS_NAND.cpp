@@ -673,6 +673,7 @@ uint8_t LittleFS_SPINAND::addBBLUT(uint32_t block_address)
 	Serial.printf("First Open Entry: %d\n", firstOpenEntry);
 	
 	//Write BBLUT with next sequential block
+	#ifdef LATER
 	uint8_t cmd[5];
 	
 	uint16_t pba, lba;
@@ -691,7 +692,7 @@ uint8_t LittleFS_SPINAND::addBBLUT(uint32_t block_address)
 	//port->transfer(cmd, 5);
     //digitalWrite(pin, HIGH);
     //port->endTransaction();
-	
+	#endif
 	wait(progtime);
 	
   }
@@ -719,11 +720,11 @@ void LittleFS_SPINAND::deviceReset()
 
 }
 
-bool LittleFS_SPINAND::lowLevelFormat(char progressChar)
+bool LittleFS_SPINAND::lowLevelFormat(char progressChar, Print* pr)
 {
 	uint32_t eraseAddr;
 	bool val;
-	val = LittleFS::lowLevelFormat(progressChar);
+	val = LittleFS::lowLevelFormat(progressChar, pr);
 	
 	for(uint16_t blocks = 0; blocks < reservedBBMBlocks; blocks++) {
 		eraseAddr = (config.block_count + blocks) * config.block_size;
@@ -1410,7 +1411,7 @@ uint8_t LittleFS_QPINAND::addBBLUT(uint32_t block_address)
 	//lba = LINEAR_TO_BLOCK((firstOpenEntry+1)*config.block_size);
 	lba = LINEAR_TO_BLOCK((firstOpenEntry+1)*blocksize + chipsize);
 	Serial.printf("PBA: %d, LBA: %d\n", pba, lba);
-	
+	#ifdef LATER	
 	uint8_t cmd[4];
 	cmd[0] = pba >> 8;
 	cmd[1] = pba;
@@ -1419,7 +1420,7 @@ uint8_t LittleFS_QPINAND::addBBLUT(uint32_t block_address)
 	
    //FLEXSPI2_LUT44 = LUT0(CMD_SDR, PINS1, 0xA1) | LUT0(WRITE_SDR, PINS1, 1);  
    //flexspi2_ip_write(8, 0x00800000, cmd, 4);
-	
+	#endif	
 	wait(progtime);
   }
 	return 0;

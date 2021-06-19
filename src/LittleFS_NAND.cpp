@@ -21,7 +21,46 @@
  */
 
 #include <Arduino.h>
-#include <LittleFS_NAND.h>
+#include <LittleFS.h>
+
+// Bits in LBA for BB LUT
+#define BBLUT_STATUS_ENABLED (1 << 15)
+#define BBLUT_STATUS_INVALID (1 << 14)
+#define BBLUT_STATUS_MASK    (BBLUT_STATUS_ENABLED | BBLUT_STATUS_INVALID)
+
+//////////////////////////////////////////////////////
+// Some useful defs and macros
+#define LINEAR_TO_COLUMNECC(laddr) ((laddr) % PAGE_ECCSIZE)
+#define LINEAR_TO_COLUMN(laddr) ((laddr) % pageSize)
+#define LINEAR_TO_PAGE(laddr) ((laddr) / pageSize)
+#define LINEAR_TO_PAGEECC(laddr) ((laddr) / PAGE_ECCSIZE)
+#define LINEAR_TO_BLOCK(laddr) (LINEAR_TO_PAGE(laddr) / PAGES_PER_BLOCK)
+#define BLOCK_TO_PAGE(block) ((block) * PAGES_PER_BLOCK)
+#define BLOCK_TO_LINEAR(block) (BLOCK_TO_PAGE(block) * pageSize)
+
+//////////////////////////////////////////////////////
+//Chip ID
+#define W25N01	0xEFAA21
+#define W25N02	0xEFAA22
+#define W25M02	0xEFBB21
+
+
+//Geometry
+#define sectors_w25n0x              1024
+#define pagesPerSector_w25n0x         64
+#define pageSize              		2048
+#define sectorSize					pagesPerSector_w25n0x * pageSize
+#define totalSize_w25n0x		 	sectorSize * sectors_w25n0x
+#define pagesPerDie					65534
+
+// Device size parameters
+#define PAGE_SIZE			2048
+#define PAGES_PER_BLOCK		64
+#define BLOCKS_PER_DIE		1024
+
+#define reservedBBMBlocks	24
+
+
 
 #define SPICONFIG_NAND   SPISettings(55000000, MSBFIRST, SPI_MODE0)
 

@@ -1,4 +1,4 @@
-#include <LittleFS_NAND.h>
+#include <LittleFS.h>
 #include <stdarg.h>
 uint64_t fTot, totSize1;
 

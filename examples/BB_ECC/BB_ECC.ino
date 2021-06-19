@@ -1,4 +1,4 @@
-#include <LittleFS_NAND.h>
+#include <LittleFS.h>
 
 //#define TEST_SPI_NAND
 #define TEST_QSPI_NAND

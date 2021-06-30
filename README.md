@@ -82,7 +82,87 @@ And then in setup all you need for the NAND or NOR QSPI is:
 ```
 
 ### SPI
-LittleFS_SPIFlash myfs;
-LittleFS_SPINAND myfs;
-LittleFS_SPIFram myfs;
+For SPI, three constructors are availble - NOR Flash, NAND Flash and FRAM
+1. ```LittleFS_SPIFlash myfs;```
+2. ```LittleFS_SPINAND myfs;```
+3. ```LittleFS_SPIFram myfs;```
 
+For SPI the ```begin``` statement requires the user to specify the Chip Select pin and optionally which SPI port to use:
+
+```myfs.begin(CSpin, SPIport);```
+
+By default the SPI port is SPI, use SPI1, SPI2 etc for other ports.
+
+## Examples
+
+Several examples are provided.  A simple example is as follows for a datalogger for a SPI NAND
+
+```
+/*
+  LittleFS  datalogger
+ 
+ This example shows how to log data from three analog sensors
+ to an storage device such as a FLASH.
+ 
+ This example code is in the public domain.
+ */
+
+#include <LittleFS.h>
+
+LittleFS_SPINAND  myfs;   //Specifies to use an SPI NOR Flash attached to SPI
+
+const int chipSelect = 4;
+
+void setup()
+{
+
+  // Open serial communications and wait for port to open:
+  Serial.begin(9600);
+  while (!Serial) {
+    // wait for serial port to connect.
+  }
+
+
+  Serial.print("Initializing SPI FLASH...");
+
+  // see if the Flash is present and can be initialized:
+ if (!myfs.begin(chipSelect, SPI)) {
+    Serial.printf("Error starting %s\n", "SPI FLASH");
+    while (1) {
+      // Flash error, so don't do anything more - stay stuck here
+    }
+  }
+  Serial.println("Flash initialized.");
+}
+
+void loop()
+{
+  // make a string for assembling the data to log:
+  String dataString = "";
+
+  // read three sensors and append to the string:
+  for (int analogPin = 0; analogPin < 3; analogPin++) {
+    int sensor = analogRead(analogPin);
+    dataString += String(sensor);
+    if (analogPin < 2) {
+      dataString += ",";
+    }
+  }
+
+  // open the file.
+  File dataFile = myfs.open("datalog.txt", FILE_WRITE);
+  
+  // if the file is available, write to it:
+  if (dataFile) {
+    dataFile.println(dataString);
+    dataFile.close();
+    // print to the serial port too:
+    Serial.println(dataString);
+  } else {
+    // if the file isn't open, pop up an error:
+    Serial.println("error opening datalog.txt");
+  }
+  delay(100); // run at a reasonable not-too-fast speed
+}
+```
+This is an example taked from the SD library.  Basically instead of specifying the SD library you specify to use the littleFS library on the first line as shown in the example.  Then using our methods for specifing which memory to use all we did was substitute "myfs" for where "SD" was specified before.

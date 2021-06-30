@@ -555,7 +555,7 @@ void readVerify( char szPath[], char chNow ) {
 			}
 		}
 	}
-	Serial.printf( "  Verify %s %uB ", szPath, ii );
+	Serial.printf( "  Verify %u Bytes ", ii );
 	if (ii != file3.size()) {
 		Serial.printf( "\n\tRead Count fail! :: read %u != f.size %llu", ii, file3.size() );
 		parseCmd( '0' );

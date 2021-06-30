@@ -17,9 +17,21 @@
  - All .size() functions return a 64 bit uint64_t - take care when printing
 */
 
+/* \/ == Uncomment ONE of the TWO lines to select SPI FLASH type: NOR or NAND == \/ */
+
+#define TEST_QSPI // Typical NOR FLASH
+//#define TEST_QSPI_NAND // NAND Flash
+
+/* /\ == Uncomment ONE of the TWO lines to select SPI FLASH type: NOR or NAND == /\ */
+
 // This declares the LittleFS Media type and gives a text name to Identify in use
+#if defined TEST_QSPI
 LittleFS_QSPIFlash myfs;
 char szDiskMem[] = "QSPI_DISK";
+#elif defined(TEST_QSPI_NAND)
+char szDiskMem[] = "QSPI_NAND";
+LittleFS_QPINAND myfs;
+#endif
 
 // Adjust these for amount of disk space used in iterations
 #define MAXNUM 26	// Number of files : ALPHA A-Z is MAX of 26, less for fewer files

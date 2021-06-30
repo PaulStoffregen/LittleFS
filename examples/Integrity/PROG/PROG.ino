@@ -17,18 +17,19 @@
  - All .size() functions return a 64 bit uint64_t - take care when printing
 */
 
-// This declares the LittleFS Media type and gives a text name to Identify in use
-LittleFS_RAM myfs;  // CAN use either RAM1 or RAM2 as available
-char buf[ 390 * 1024 ];	// BUFFER in RAM1 :: Lost on any restart
-//DMAMEM char buf[ 390 * 1024 ];	// DMAMEM Uses RAM2 :: Typically survives Restart/Upload
-char szDiskMem[] = "RAM_DISK";
+
+#define PROG_FLASH_SIZE 1024 * 1024 * 1 // Specify size to use of onboard Teensy Program Flash chip
+// This creates a LittleFS drive in Teensy PCB FLash. 
+// This will persist until a new UPLOAD - Bootloader may change after TD 1.54 to prevent reformat.
+LittleFS_Program myfs;
+char szDiskMem[] = "PRO_DISK";
 
 // Adjust these for amount of disk space used in iterations
-#define MAXNUM 8	// Number of files : ALPHA A-Z is MAX of 26, less for fewer files
-#define NUMDIRS 4  // Number of Directories to use 0 is Rootonly
-#define BIGADD 640	// bytes added each pass - bigger will quickly consume more space
+#define MAXNUM 6	// Number of files : ALPHA A-Z is MAX of 26, less for fewer files
+#define NUMDIRS 2  // Number of Directories to use 0 is Rootonly
+#define BIGADD 2024	// bytes added each pass - bigger will quickly consume more space
 #define SUBADD 512	// bytes added each pass (*times file number)
-#define MAXFILL 10000 // 66000	// ZERO to disable :: Prevent iterations from over filling - require this much free
+#define MAXFILL 2048 // 66000	// ZERO to disable :: Prevent iterations from over filling - require this much free
 
 // These can likely be left unchanged
 #define MYBLKSIZE 2048 // 2048
@@ -60,7 +61,7 @@ void setup() {
 	Serial.println("\n" __FILE__ " " __DATE__ " " __TIME__);
 	Serial.println("LittleFS Test : File Integrity"); delay(5);
 
-	if (!myfs.begin(buf, sizeof(buf))) {
+	if (!myfs.begin(PROG_FLASH_SIZE)) {
 		Serial.printf("Error starting %s\n", szDiskMem);
 		checkInput( 1 );
 	}
@@ -72,6 +73,7 @@ void setup() {
 	filecount = printDirectoryFilecount( myfs.open("/") );  // Set base value of filecount for disk
 	printDirectory();
 }
+
 
 void loop() {
 	char szDir[16];

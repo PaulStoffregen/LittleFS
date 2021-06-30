@@ -17,58 +17,15 @@
  - All .size() functions return a 64 bit uint64_t - take care when printing
 */
 
-
+#define MYPSRAM 16 // 8	// compile time PSRAM size and is T_4.1 specific either 8 or 16, or smaller portion
 #define SLACK_SPACE	40960 // allow for overhead slack space :: WORKS on FLASH {some need more with small alloc units}
 //#define ROOTONLY // NORMAL is NOT DEFINED!
-#define NUMDIRS 12  // When not ROOTONLY must be 1 or more
-#define MYPSRAM 16	// compile time PSRAM size
+#define NUMDIRS 24  // When not ROOTONLY must be 1 or more
 #define MYBLKSIZE 2048 // 2048
 
-#define TEST_RAM
-//#define TEST_SPI
-//#define TEST_QSPI
-//#define TEST_SPI_NAND
-//#define TEST_QSPI_NAND
-//#define TEST_PROG
-//#define TEST_MRAM
-
-// Set for SPI usage
-//const int FlashChipSelect = 10; // AUDIO BOARD
-const int FlashChipSelect = 4; // PJRC Mem board 64MB on #5, #6 : NAND 1Gb on #3, 2GB on #4
-//const int FlashChipSelect = 5; // PJRC Mem board 64MB on #5, #6 : NAND 1Gb on #3, 2GB on #4
-//const int FlashChipSelect = 6; // digital pin for flash chip CS pin
-
-
-#ifdef TEST_RAM
 LittleFS_RAM myfs;
-// RUNTIME :: extern "C" uint8_t external_psram_size;
 EXTMEM char buf[MYPSRAM * 1024 * 1024];	// USE DMAMEM for more memory than ITCM allows - or remove
-//DMAMEM char buf[490000];	// USE DMAMEM for more memory than ITCM allows - or remove
 char szDiskMem[] = "RAM_DISK";
-#elif defined(TEST_SPI)
-//const int FlashChipSelect = 10; // Arduino 101 built-in SPI Flash
-#define FORMATSPI
-//#define FORMATSPI2
-LittleFS_SPIFlash myfs;
-char szDiskMem[] = "SPI_DISK";
-#elif defined(TEST_MRAM)
-//const int FlashChipSelect = 10; // Arduino 101 built-in SPI Flash
-LittleFS_SPIFram myfs;
-char szDiskMem[] = "FRAM_DISK";
-#elif defined(TEST_PROG)
-LittleFS_Program myfs;
-char szDiskMem[] = "PRO_DISK";
-#elif defined(TEST_QSPI_NAND)
-char szDiskMem[] = "QSPI_NAND";
-LittleFS_QPINAND myfs;
-#elif defined(TEST_SPI_NAND)
-char szDiskMem[] = "SPI_NAND";
-LittleFS_SPINAND myfs;
-#else // TEST_QSPI
-LittleFS_QSPIFlash myfs;
-char szDiskMem[] = "QSPI_DISK";
-
-#endif
 
 
 uint32_t DELSTART = 3; // originally was 3 + higher bias more to writes and larger files - lower odd
@@ -95,31 +52,7 @@ void setup() {
 	Serial.println("\n" __FILE__ " " __DATE__ " " __TIME__);
 	Serial.println("LittleFS Test : File Integrity"); delay(5);
 
-#ifdef TEST_RAM
 	if (!myfs.begin(buf, sizeof(buf))) {
-#elif defined(TEST_RAM2)
-	if (!myfs.begin(buf, sizeof(buf), MYBLKSIZE )) {
-#elif defined(TEST_SPI)
-#ifdef FORMATSPI
-	if (!myfs.begin( FlashChipSelect )) {
-#elif defined(FORMATSPI2)
-	pinMode(FlashChipSelect, OUTPUT);
-	digitalWriteFast(FlashChipSelect, LOW);
-	SPI2.setMOSI(50);
-	SPI2.setMISO(54);
-	SPI2.setSCK(49);
-	SPI2.begin();
-	if (!myfs.begin(51, SPI2)) {
-#endif
-#elif defined(TEST_MRAM)
-	if (!myfs.begin( FlashChipSelect )) {
-#elif defined(TEST_SPI_NAND)
-	if (!myfs.begin( FlashChipSelect )) {
-#elif defined(TEST_PROG)
-	if (!myfs.begin(1024 * 1024 * 6)) {
-#else
-	if (!myfs.begin()) {
-#endif
 		Serial.printf("Error starting %s\n", szDiskMem);
 		checkInput( 1 );
 	}

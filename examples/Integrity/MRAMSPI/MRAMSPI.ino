@@ -31,9 +31,9 @@ LittleFS_SPIFram myfs;
 char szDiskMem[] = "FRAM_DISK";
 
 uint32_t DELSTART = 3; // originally was 3 + higher bias more to writes and larger files - lower odd
-#define SUBADD 512	// bytes added each pass (*times file number)
-#define BIGADD 1024	// bytes added each pass - bigger will quickly consume more space
-#define MAXNUM 12	// ALPHA A-Z is 26, less for fewer files
+#define SUBADD 128	// bytes added each pass (*times file number)
+#define BIGADD 256	// bytes added each pass - bigger will quickly consume more space
+#define MAXNUM 16	// Created Files ::ALPHA A-Z is 26, less for fewer files
 #define MAXFILL 2048 // 66000	// ZERO to disable :: Prevent iterations from over filling - require this much free
 #define DELDELAY 0 	// delay before DEL files : delayMicroseconds
 #define ADDDELAY 0 	// delay on ADD FILE : delayMicroseconds

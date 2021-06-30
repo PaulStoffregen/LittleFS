@@ -258,6 +258,13 @@ void parseCmd( char chIn ) { // pass chIn == '?' for help
 	if ( 0 != chIn ) Serial.print( chIn );
 }
 
+uint32_t loopAutoFormat( uint32_t cnt, uint32_t myres ) {
+	uint32_t retres;
+	retres = myfs.formatUnused( cnt, myres );
+	Serial.printf("\t fmtU @ %lu - %lu \n", myres, retres );
+	return retres;
+}
+
 uint32_t fTot, totSize;
 void printDirectory() {
 	fTot = 0, totSize = 0;
@@ -428,7 +435,7 @@ uint32_t fileCycle(const char *dir) {
 		readVerify( szPath, chNow );
 		myfs.remove(szPath);
 		filecount--;
-		Serial.printf(" %s ----DEL----", szDiskMem);
+		Serial.printf(" ----DEL----");
 		Serial.printf(" -- %c", chNow);
 		if ( showDir ) {
 			Serial.print("\n");
@@ -460,7 +467,8 @@ uint32_t fileCycle(const char *dir) {
 			char mm = chNow + lowOffset;
 			uint64_t jj = file3.size() + 1;
 			uint32_t timeMe = micros();
-			for ( ii = 0; ii < (nNum * SUBADD + BIGADD ) && resW > 0; ii++ ) {
+			int32_t nn = nNum * SUBADD + BIGADD;
+			for ( ii = 0; ii < nn && resW >= 0; ii++ ) {
 				if ( 0 == ((ii + jj) / lowShift) % 2 )
 					resW = file3.write( &mm , 1 );
 				else
@@ -471,7 +479,7 @@ uint32_t fileCycle(const char *dir) {
 			file3.close();
 			timeMe = micros() - timeMe;
 			timeMeAll = micros() - timeMeAll;
-			Serial.printf(" %s +++ Add [sz %u add %u] @KB/sec %5.2f {%5.2f} ", szDiskMem, jj - 1, ii, ii / (timeMe / 1000.0), ii / (timeMeAll / 1000.0) );
+			Serial.printf(" +++ size %llu: Add %d @KB/sec %5.2f ",  jj - 1, nn, ii / (timeMeAll / 1000.0) );
 			if (resW < 0) {
 				Serial.printf( "\n\twrite fail ERR# %i 0x%X \n", resW, resW );
 				parseCmd( '0' );
@@ -479,11 +487,10 @@ uint32_t fileCycle(const char *dir) {
 				checkInput( 1 );	// PAUSE on CmdLine
 			}
 			else if ( jj == 1 ) filecount++; // File Added
-			Serial.printf(" ++ %c ", chNow);
+			Serial.print("\t");
 			if ( bWriteVerify )
 				readVerify( szPath, chNow );
-			else
-				Serial.print('\n');
+			Serial.print('\n');
 			if ( showDir ) {
 				Serial.print('\n');
 				printDirectory(myfs.open(dir), 1);
@@ -556,7 +563,7 @@ void readVerify( char szPath[], char chNow ) {
 	}
 	file3.close();
 	timeMe = micros() - timeMe;
-	Serial.printf( " @KB/sec %5.2f \n", ii / (timeMe / 1000.0) );
+	Serial.printf( " @KB/sec %5.2f", ii / (timeMe / 1000.0) );
 }
 
 bool bigVerify( char szPath[], char chNow ) {

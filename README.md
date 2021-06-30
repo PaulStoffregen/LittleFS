@@ -68,7 +68,7 @@ In setup you have to specify to begin using the memory area:
   } 
 ```
   
-At this point you can access or create files in the same manner as you would with an SD Card using the SD Library bundled with Teensyduino.
+At this point you can access or create files in the same manner as you would with an SD Card using the SD Library bundled with Teensyduino.  See the examples section for creating and writing a file.
 
 ### QSPI
 

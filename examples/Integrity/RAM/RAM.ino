@@ -11,66 +11,40 @@
  - For the primary looping enter number 1-9, h, or k and 'c' for continuous. A running count will stop with '0'
  - 'd' for directory will walk the directory and verify against the expected number of files added/deleted
  - Many commands were added as LittleFS developed, early work has lots of verbose settings now TOGGLED off for speed
- - 
+ -
  - Each named sketch works on a specific Media type as presented
  - there are various commands provided to demonstrate usage
  - All .size() functions return a 64 bit uint64_t - take care when printing
 */
 
-
-#define SLACK_SPACE	40960 // allow for overhead slack space :: WORKS on FLASH {some need more with small alloc units}
-#define ROOTONLY // NORMAL is DEFINED for smaller RAM drive
-#define NUMDIRS 6  // When not ROOTONLY must be 1 or more
-#define MYBLKSIZE 2048 // 2048
-
-LittleFS_RAM myfs;
-// RUNTIME :: extern "C" uint8_t external_psram_size;
-char buf[ 390 * 1024 ];	// USE DMAMEM for more memory than ITCM allows - or remove
-//DMAMEM char buf[ 390 * 1024 ];	// USE DMAMEM for more memory than ITCM allows - or remove
+// This declares the LittleFS Media type and gives a text name to Identify in use
+LittleFS_RAM myfs;  // CAN use either RAM1 or RAM2 as available
+char buf[ 390 * 1024 ];	// BUFFER in RAM1 :: Lost on any restart
+//DMAMEM char buf[ 390 * 1024 ];	// DMAMEM Uses RAM2 :: Typically survives Restart/Upload
 char szDiskMem[] = "RAM_DISK";
 
 
-uint32_t DELSTART = 3; // originally was 3 + higher bias more to writes and larger files - lower odd
-#define SUBADD 512	// bytes added each pass (*times file number)
+// Adjust these for amount of disk space used in iterations
+#define MAXNUM 8	// Number of files : ALPHA A-Z is MAX of 26, less for fewer files
+#define NUMDIRS 4  // Number of Directories to use 0 is Rootonly
 #define BIGADD 640	// bytes added each pass - bigger will quickly consume more space
-#define MAXNUM 12	// ALPHA A-Z is 26, less for fewer files
+#define SUBADD 512	// bytes added each pass (*times file number)
 #define MAXFILL 10000 // 66000	// ZERO to disable :: Prevent iterations from over filling - require this much free
+
+// These can likely be left unchanged
+#define MYBLKSIZE 2048 // 2048
+#define SLACK_SPACE	40960 // allow for overhead slack space :: WORKS on FLASH {some need more with small alloc units}
+uint32_t DELSTART = 3; // originally was 3 + higher bias more to writes and larger files - lower odd
 #define DELDELAY 0 	// delay before DEL files : delayMicroseconds
 #define ADDDELAY 0 	// delay on ADD FILE : delayMicroseconds
 
+// Various Globals
 const uint32_t lowOffset = 'a' - 'A';
-const uint32_t lowShift = 13; // Prime # to alternate up/low case to verify file content
-uint32_t errsLFS = 0;
-uint32_t warnLFS = 0;
-uint32_t lCnt = 0;
-uint32_t LoopCnt = 0;
-uint64_t rdCnt = 0;
-uint64_t wrCnt = 0;
+const uint32_t lowShift = 13;
+uint32_t errsLFS = 0, warnLFS = 0; // Track warnings or Errors
+uint32_t lCnt = 0, LoopCnt = 0; // loop counters
+uint64_t rdCnt = 0, wrCnt = 0; // Track Bytes Read and Written
 int filecount = 0;
-
-File file3;
-void setup() {
-	while (!Serial) ; // wait
-	Serial.println("\n" __FILE__ " " __DATE__ " " __TIME__);
-	Serial.println("LittleFS Test : File Integrity"); delay(5);
-
-	if (!myfs.begin(buf, sizeof(buf))) {
-		Serial.printf("Error starting %s\n", szDiskMem);
-		checkInput( 1 );
-	}
-	// parseCmd( 'F' ); // ENABLE this if disk won't allow startup
-	filecount = printDirectoryFilecount( myfs.open("/") );  // Set base value of filecount for disk
-	printDirectory();
-	parseCmd( '?' );
-#ifndef ROOTONLY // make subdirs if !ROOTONLY
-	makeRootDirs();
-#endif
-	checkInput( 1 );
-	filecount = printDirectoryFilecount( myfs.open("/") );  // Set base value of filecount for disk
-	printDirectory();
-}
-
-
 int loopLimit = 0; // -1 continuous, otherwise # to count down to 0
 bool pauseDir = false;  // Start Pause on each off
 bool showDir =  false;  // false Start Dir on each off
@@ -80,16 +54,32 @@ bool bAutoFormat =  false;  // false Auto formatUnused() off
 bool bCheckFormat =  false;  // false CheckFormat
 bool bCheckUsed =  false;  // false CheckUsed
 uint32_t res = 0; // for formatUnused
+File file3; // Single FILE used for all functions
+
+void setup() {
+	while (!Serial) ; // wait
+	Serial.println("\n" __FILE__ " " __DATE__ " " __TIME__);
+	Serial.println("LittleFS Test : File Integrity"); delay(5);
+
+	if (!myfs.begin(buf, sizeof(buf))) {
+		Serial.printf("Error starting %s\n", szDiskMem);
+		checkInput( 1 );
+	}
+	filecount = printDirectoryFilecount( myfs.open("/") );  // Set base value of filecount for disk
+	printDirectory();
+	parseCmd( '?' );
+	makeRootDirs();
+	checkInput( 1 );
+	filecount = printDirectoryFilecount( myfs.open("/") );  // Set base value of filecount for disk
+	printDirectory();
+}
+
 void loop() {
 	char szDir[16];
 	LoopCnt++;
 	uint32_t chStep;
 	if ( loopLimit != 0 ) {
-#ifdef ROOTONLY // ii=1-NUMDIRS are subdirs. #0 is Root
-		for ( uint32_t ii = 0; ii < 1 && ( loopLimit != 0 ); ii++ )
-#else
-		for ( uint32_t ii = 0; ii < NUMDIRS && ( loopLimit != 0 ); ii++ )
-#endif
+		for ( uint32_t ii = 0; ii <= NUMDIRS && ( loopLimit != 0 ); ii++ )
 		{
 			if ( ii == 0 )
 				sprintf( szDir, "/" );

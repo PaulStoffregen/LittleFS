@@ -128,6 +128,7 @@ void parseCmd( char chIn ) { // pass chIn == '?' for help
 		Serial.println("\nWalk all Files verify Read Size:\t");
 		lastTime = micros();
 		Serial.printf( "\t%u Errors found\n" , DirectoryVerify( myfs.open("/") ) );
+		Serial.printf("\nBytes Used: %llu, Bytes Total:%llu\n", myfs.usedSize(), myfs.totalSize());
 		parseCmd( 'l' );
 		checkInput( 1 );
 		chIn = 0;

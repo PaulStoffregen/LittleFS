@@ -44,7 +44,7 @@ Cypress | CY15B108QN-40SXI | 8Mb
 ROHM | MR45V100A | 1Mb
 
 
-## USUAGE
+## USAGE
 
 ### RAM Disk
 

@@ -82,5 +82,7 @@ And then in setup all you need for the NAND or NOR QSPI is:
 ```
 
 ### SPI
-
+LittleFS_SPIFlash myfs;
+LittleFS_SPINAND myfs;
+LittleFS_SPIFram myfs;
 

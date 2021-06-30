@@ -57,10 +57,12 @@ To create a RAM disk  you need to first allocate the space based on the type of 
 
 Afer allocating space you specify that you want to create a RAM Disk:
 
-```LittleFS_RAM myfs;```
+```cpp
+LittleFS_RAM myfs;
+```
 
 In setup you have to specify to begin using the memory area:
-```
+```cpp
  if (!myfs.begin(buf, sizeof(buf))) {
     Serial.printf("Error starting %s\n", "RAM DISK);
   } 
@@ -75,7 +77,7 @@ QSPI is only supported on the Teensy 4.1.  These are the Flash chips that you wo
 2. For a NOR flash ```LittleFS_QSPIFlash myfs; ```
 
 And then in setup all you need for the NAND or NOR QSPI is:
-```
+```cpp
  if (!myfs.begin() {
     Serial.printf("Error starting %s\n", "QSPI");
   } 
@@ -97,7 +99,7 @@ By default the SPI port is SPI, use SPI1, SPI2 etc for other ports.
 
 Several examples are provided.  A simple example is as follows for a datalogger for a SPI NAND
 
-```
+```cpp
 /*
   LittleFS  datalogger
  

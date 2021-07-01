@@ -169,4 +169,4 @@ void loop()
 ```
 This is an example taked from the SD library.  Basically instead of specifying the SD library you specify to use the littleFS library on the first line as shown in the example.  Then using our methods for specifing which memory to use all we did was substitute "myfs" for where "SD" was specified before.
 
-## Aditional Methods
+## [Aditional Methods](https://github.com/mjs513/LittleFS/blob/main/README1.md)

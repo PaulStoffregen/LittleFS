@@ -23,7 +23,7 @@ const int FlashChipSelect = 10; // AUDIO BOARD is 10, other set as connected.
 char szDiskMem[] = "FRAM_DISK";
 
 // Adjust these for amount of disk space used in iterations
-#define MAXNUM 16	// Number of files : ALPHA A-Z is MAX of 26, less for fewer files
+#define MAXNUM 5	// Number of files : ALPHA A-Z is MAX of 26, less for fewer files
 #define NUMDIRS 0  // Number of Directories to use 0 is Rootonly
 #define BIGADD 256	// bytes added each pass - bigger will quickly consume more space
 #define SUBADD 128	// bytes added each pass (*times file number)

@@ -34,8 +34,8 @@ LittleFS_QPINAND myfs;
 #endif
 
 // Adjust these for amount of disk space used in iterations
-#define MAXNUM 26	// Number of files : ALPHA A-Z is MAX of 26, less for fewer files
-#define NUMDIRS 12  // Number of Directories to use 0 is Rootonly
+#define MAXNUM 5	// Number of files : ALPHA A-Z is MAX of 26, less for fewer files
+#define NUMDIRS 5  // Number of Directories to use 0 is Rootonly
 #define BIGADD 2024	// bytes added each pass - bigger will quickly consume more space
 #define SUBADD 512	// bytes added each pass (*times file number)
 #define MAXFILL 2048 // 66000	// ZERO to disable :: Prevent iterations from over filling - require this much free

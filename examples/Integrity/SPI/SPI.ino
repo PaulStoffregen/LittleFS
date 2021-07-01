@@ -26,7 +26,7 @@
 /* /\ == Uncomment ONE of the TWO lines to select SPI FLASH type: NOR or NAND == /\ */
 
 // Set which Chip Select pin for SPI usage
-const int FlashChipSelect = 10; // PJRC AUDIO BOARD is 10 // Tested NOR 64MB on #5, #6 : NAND 1Gb on #3, 2GB on #4
+const int FlashChipSelect = 5; // PJRC AUDIO BOARD is 10 // Tested NOR 64MB on #5, #6 : NAND 1Gb on #3, 2GB on #4
 
 #ifdef TEST_SPI
 LittleFS_SPIFlash myfs;
@@ -37,8 +37,8 @@ char szDiskMem[] = "SPI_NAND";
 #endif
 
 // Adjust these for amount of disk space used in iterations
-#define MAXNUM 26	// Number of files : ALPHA A-Z is MAX of 26, less for fewer files
-#define NUMDIRS 32  // Number of Directories to use 0 is Rootonly
+#define MAXNUM 5	// Number of files : ALPHA A-Z is MAX of 26, less for fewer files
+#define NUMDIRS 5  // Number of Directories to use 0 is Rootonly
 #define BIGADD 2024	// bytes added each pass - bigger will quickly consume more space
 #define SUBADD 512	// bytes added each pass (*times file number)
 #define MAXFILL 2048 // 66000	// ZERO to disable :: Prevent iterations from over filling - require this much free

@@ -25,7 +25,7 @@ LittleFS_Program myfs;
 char szDiskMem[] = "PRO_DISK";
 
 // Adjust these for amount of disk space used in iterations
-#define MAXNUM 6	// Number of files : ALPHA A-Z is MAX of 26, less for fewer files
+#define MAXNUM 5	// Number of files : ALPHA A-Z is MAX of 26, less for fewer files
 #define NUMDIRS 2  // Number of Directories to use 0 is Rootonly
 #define BIGADD 2024	// bytes added each pass - bigger will quickly consume more space
 #define SUBADD 512	// bytes added each pass (*times file number)

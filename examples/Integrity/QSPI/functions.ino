@@ -40,35 +40,33 @@ void parseCmd( char chIn ) { // pass chIn == '?' for help
 	char szNone[] = "";
 	switch (chIn ) {
 	case '?':
-		Serial.printf( "%s\n", " 0, 1-9 '#' passes continue loop before Pause\n\
- 'a' Auto formatUnused() during iterations - TOGGLE\n\
- 'R' Restart Teensy\n\
- 'd' Directory of LittleFS\n\
- 'D' Walk all Files verify Read Size\n\
- 'w' WIPE Directory of LittleFS\n\
- 'b' big file delete\n\
- 'B' BIG FILE MAKE\n\
- 'S' FILE 2MB MAKE\n\
- 's' FILE 2MB delete\n\
- 'c' Continuous Loop\n\
- 'g' run speedBench()\n\
- 'h' Hundred loops\n\
- 'k' Thousand loops\n\
- 'F' LittleFS_ Low Level Format Disk \n\
- 'f' LittleFS::formatUnused( ALL ) : DATA PRESERVED \n\
- 'q' LittleFS_ Quick Format Disk \n\
- 'v' Verbose All Dir Prints - TOGGLE\n\
- 'p' Pause after all Dir prints - TOGGLE\n\
+		Serial.printf( "\n%s\n", " 1-9 '#' passes continue Loop before Pause\n\
+ 'c, or 0': Continuous Loop, or stop Loop in progress\n\
+ 'h, or k': start Hundred or Thousand Loops\n\
+ 'd' Directory of LittleFS Media\n\
+ 'D' Walk all Dir Files verify Read Size\n\
  'l' Show count of loop()'s, Bytes Read,Written\n\
- 'm' Make ROOT dirs (needed after q/F format !ROOTONLY)\n\
- 'u' Update Filecount\n\
- 'x' Directory filecount verify - TOGGLE\n\
- 'n' No verify on Write- TOGGLE\n\
- '+' more add to delete cycles\n\
- '-' fewer add to delete cycles\n\
+ 'B, or b': Make Big file half of free space, or remove all Big files\n\
+ 'S, or s': Make 2MB file , or remove all 2MB files\n\
+ \t>> Media Format : 'q' and 'F' remove ALL FS data\n\
+ 'q' Quick Format Disk \n\
+ 'F' Low Level Format Disk \n\
+ 'w' WIPE ALL Directories and Files\n\
+ 'm' Make ROOT dirs (needed after q/F format or 'w')\n\
+ 'f' LittleFS::formatUnused( ALL ) : DATA PRESERVED, empty blocks preformatted \n\
+ 'a' Auto formatUnused() during Loop - TOGGLE\n\
  'y' reclaim 1 block :: myfs.formatUnused( 1 )\n\
  'Y' reclaim 15 blocks :: myfs.formatUnused( 15 )\n\
- '?' Help list" );
+ \t>> Test Features \n\
+ 'g' run SpeedBench() Media speed benchmark\n\
+ 'x' Directory filecount verify - TOGGLE\n\
+ 'v' Verbose All Dir Prints - TOGGLE\n\
+ 'p' Pause after all Dir prints - TOGGLE\n\
+ 'n' No verify on Write- TOGGLE\n\
+ 'u' Update Filecount\n\
+ 'R' Restart Teensy - Except 'RAM' - data persists\n\
+ '+, or -': more, or less add .vs. delete in Loop\n\
+ '?' Help list : A Loop will Create, Extend, or Delete files to verify Integrity" );
 		break;
 	case 'R':
 		Serial.print(" RESTART Teensy ...");

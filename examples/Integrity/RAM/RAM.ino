@@ -24,7 +24,7 @@ char buf[ 390 * 1024 ];	// BUFFER in RAM1 :: Lost on any restart
 char szDiskMem[] = "RAM_DISK";
 
 // Adjust these for amount of disk space used in iterations
-#define MAXNUM 8	// Number of files : ALPHA A-Z is MAX of 26, less for fewer files
+#define MAXNUM 5	// Number of files : ALPHA A-Z is MAX of 26, less for fewer files
 #define NUMDIRS 4  // Number of Directories to use 0 is Rootonly
 #define BIGADD 640	// bytes added each pass - bigger will quickly consume more space
 #define SUBADD 512	// bytes added each pass (*times file number)

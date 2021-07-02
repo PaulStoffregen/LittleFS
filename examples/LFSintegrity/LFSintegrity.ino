@@ -1,5 +1,4 @@
-//#include <LittleFS.h>
-#include <LittleFS_NAND.h>
+#include <LittleFS.h>
 
 #define HALFCUT  // HALFCUT defined to fill half the disk
 //#define ROOTONLY // NORMAL is NOT DEFINED!

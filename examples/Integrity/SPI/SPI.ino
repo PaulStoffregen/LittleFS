@@ -26,7 +26,7 @@
 /* /\ == Uncomment ONE of the TWO lines to select SPI FLASH type: NOR or NAND == /\ */
 
 // Set which Chip Select pin for SPI usage
-const int FlashChipSelect = 5; // PJRC AUDIO BOARD is 10 // Tested NOR 64MB on #5, #6 : NAND 1Gb on #3, 2GB on #4
+const int FlashChipSelect = 6; // PJRC AUDIO BOARD is 10 // Tested NOR 64MB on #5, #6 : NAND 1Gb on #3, 2GB on #4
 
 #ifdef TEST_SPI
 LittleFS_SPIFlash myfs;
@@ -75,7 +75,7 @@ void setup() {
 
 	if (!myfs.begin( FlashChipSelect )) {
 		Serial.printf("Error starting %s\n", szDiskMem);
-		checkInput( 1 );
+		while( 1 );
 	}
 	filecount = printDirectoryFilecount( myfs.open("/") );  // Set base value of filecount for disk
 	printDirectory();

@@ -63,7 +63,7 @@ void setup() {
 
 	if (!myfs.begin(PROG_FLASH_SIZE)) {
 		Serial.printf("Error starting %s\n", szDiskMem);
-		checkInput( 1 );
+		while( 1 );
 	}
 	filecount = printDirectoryFilecount( myfs.open("/") );  // Set base value of filecount for disk
 	printDirectory();

@@ -26,6 +26,7 @@ Spansion | S25FL208K | 8Mb
 
 ### NAND Flash
 
+####
 MFG | PART # | Size
 ------------ | ------------- |------------ 
 Winbond  | W25N01G | 1Gb
@@ -35,6 +36,7 @@ Winbond  | W25N01G | 1Gb
 
 ### FRAM
 
+####
 MFG | PART # | Size
 ------------ | ------------- |------------ 
 Cypress | CY15B108QN-40SXI | 8Mb
@@ -45,6 +47,22 @@ ROHM | MR45V100A | 1Mb
 
 
 ## USAGE
+
+### Program Memory
+
+Creates the filesystem using program memory.  The begin function expects a size in bytes, for the amount of the program memory you wish to use. It must be at least 65536 and smaller than the actual unused program space.  All interrupts are disabled during writing and erasing, so use of this storage does come with pretty substantial impact on interrupt latency for other libraries.  Uploading new code by Teensy Loader completely wipes the unused program space, erasing all stored files. But the filesystem persists across reboots and power cycling.
+
+To create a disk in program memory the following constructor is used:
+```
+LittleFS_Program myfs;
+```
+
+In setup space is allocated int program memory by specifing space in the begin statement:
+```cpp
+ if (!myfs.begin(1024 * 1024 * 6)))) {
+    Serial.printf("Error starting %s\n", "RAM DISK);
+  } 
+```
 
 ### RAM Disk
 
@@ -169,4 +187,4 @@ void loop()
 ```
 This is an example taked from the SD library.  Basically instead of specifying the SD library you specify to use the littleFS library on the first line as shown in the example.  Then using our methods for specifing which memory to use all we did was substitute "myfs" for where "SD" was specified before.
 
-## Aditional Methods
+## [Aditional Methods](https://github.com/mjs513/LittleFS/blob/main/README1.md)

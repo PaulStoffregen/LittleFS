@@ -17,6 +17,8 @@
  - All .size() functions return a 64 bit uint64_t - take care when printing
 */
 
+// NOTE: This option is only available on the Teensy 4.1 board with added bottomside PSRAM chip(s) in place.
+
 // This declares the LittleFS Media type and gives a text name to Identify in use
 LittleFS_RAM myfs;
 #define MYPSRAM 8 // compile time PSRAM size and is T_4.1 specific either 8 or 16, or smaller portion

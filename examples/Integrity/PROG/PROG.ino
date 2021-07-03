@@ -17,6 +17,7 @@
  - All .size() functions return a 64 bit uint64_t - take care when printing
 */
 
+// NOTE: This option is only available on the Teensy 4.0, Teensy 4.1 and Teensy Micromod boards.
 
 #define PROG_FLASH_SIZE 1024 * 1024 * 1 // Specify size to use of onboard Teensy Program Flash chip
 // This creates a LittleFS drive in Teensy PCB FLash. 

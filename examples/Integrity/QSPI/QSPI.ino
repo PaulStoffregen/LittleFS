@@ -17,7 +17,7 @@
  - All .size() functions return a 64 bit uint64_t - take care when printing
 */
 
-// NOTE: This option is only available on the Teensy 4.0, Teensy 4.1 and Teensy Micromod boards.
+// NOTE: This option is only available on the Teensy 4.1 board with added bottomside chip in place.
 
 /* \/ == Uncomment ONE of the TWO lines to select SPI FLASH type: NOR or NAND == \/ */
 

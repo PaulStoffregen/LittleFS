@@ -864,18 +864,21 @@ FLASHMEM
 bool LittleFS_Program::begin(uint32_t size)
 {
 	//Serial.println("Program flash begin");
+	//Serial.printf("size in bytes - %u \n", size); 
+	
 	configured = false;
 	baseaddr = 0;
-	size = size & 0xFFFF0000;
+	//size = size & 0xFFFF0000;
+	size = (size + 0xFFFF) & 0xFFFF0000;
 	if (size == 0) return false;
-	const uint32_t program_size = (uint32_t)&_flashimagelen + 4096; // extra 4K for CSF
+	const uint32_t program_size = (uint32_t)&_flashimagelen; 
 	if (program_size >= FLASH_SIZE) return false;
 	const uint32_t available_space = FLASH_SIZE - program_size;
+	//Serial.printf("FLASH_SIZE - %u, program_size - %u\n", FLASH_SIZE, program_size);
 	//Serial.printf("available_space = %u\n", available_space);
 	if (size > available_space) return false;
-
 	baseaddr = 0x60000000 + FLASH_SIZE - size;
-	//Serial.printf("baseaddr = %x\n", baseaddr);
+	//Serial.printf("size - %u,  baseaddr = %x\n", size, baseaddr);
 
 	memset(&lfs, 0, sizeof(lfs));
 	memset(&config, 0, sizeof(config));

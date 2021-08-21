@@ -2,7 +2,7 @@
 
 ### Formatting
 
-```myfs.quickFormat()``` formatUnused() can be used ahead of logging on slower media to assure best write times.  It only formats unused space on the media.  Can come in handy on large NAND chips.
+```myfs.formatUnused()``` formatUnused() can be used ahead of logging on slower media to assure best write times.  It only formats unused space on the media.  Can come in handy on large NAND chips.
 
 ```myfs.quickFormat()``` performs a quick format of the media specified
 

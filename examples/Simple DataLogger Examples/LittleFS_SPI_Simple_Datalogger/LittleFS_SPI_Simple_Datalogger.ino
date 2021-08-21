@@ -11,8 +11,18 @@
 // LittleFS supports creating file systems (FS) in multiple memory types.  Depending on the 
 // memory type you want to use you would uncomment one of the following constructors
 
-//LittleFS_QSPIFlash myfs;  // Used to create FS on QSPI NOR flash chips located on the bottom of the T4.1 such as the W25Q16JV*IQ/W25Q16FV,  for the full list of supported NOR flash see https://github.com/PaulStoffregen/LittleFS#nor-flash
-LittleFS_QPINAND myfs;  // Used to create FS on QSPI NAND flash chips located on the bottom of the T4.1 such as the W25N01G. for the full list of supported NAND flash see  https://github.com/PaulStoffregen/LittleFS#nand-flash
+LittleFS_SPIFlash myfs;  // Used to create FS on SPI NOR flash chips such as the W25Q16JV*IQ/W25Q16FV,
+                         // for the full list of supported NOR flash see 
+                         // https://github.com/PaulStoffregen/LittleFS#nor-flash
+
+//LittleFS_SPINAND myfs;  // Used to create FS on SPI NAND flash chips on a SPI port 
+                          // such as SPI, SPI1, SPI2 etc.  For the full list of supported 
+                          //  NAND Flash chips see https://github.com/PaulStoffregen/LittleFS#nand-flash
+
+//LittleFS_SPIFram myfs;  // Used to create FS on FRAM memory chips such as the FM25V10-G.  
+                          // For the full list of supported chips see https://github.com/PaulStoffregen/LittleFS#fram
+
+const int chipSelect = 7;  // digital pin for Flash or Fram chip CS pin to create FS on QSPI NAND flash chips located on the bottom of the T4.1 such as the W25N01G. for the full list of supported NAND flash see  https://github.com/PaulStoffregen/LittleFS#nand-flash
 
 File dataFile;  // Specifes that dataFile is of File type
 
@@ -27,12 +37,15 @@ void setup()
   while (!Serial) {
     // wait for serial port to connect.
   }
+  Serial.println("\n" __FILE__ " " __DATE__ " " __TIME__);
 
   Serial.print("Initializing LittleFS ...");
 
   // see if the Flash is present and can be initialized:
-  if (!myfs.begin()) {
-    Serial.printf("Error starting %s\n", "QSPI FLASH");
+  // Note:  SPI is default so if you are using SPI and not SPI for instance
+  //        you can just specify myfs.begin(chipSelect). 
+  if (!myfs.begin(chipSelect, SPI)) {
+    Serial.printf("Error starting %s\n", "SPI FLASH");
     while (1) {
       // Error, so don't do anything more - stay stuck here
     }
@@ -48,19 +61,26 @@ void loop()
   if ( Serial.available() ) {
     char rr;
     rr = Serial.read();
-    if (rr == 'l') listFiles();
-    if (rr == 'e') eraseFiles();
-    if (rr == 's') {
-      Serial.println("\nLogging Data!!!");
-      write_data = true;   // sets flag to continue to write data until new command is received
-      // opens a file or creates a file if not present,  FILE_WRITE will append data to 
-      // to the file created.
-      dataFile = myfs.open("datalog.txt", FILE_WRITE);
-      logData();
+    switch (rr) {
+      case 'l': listFiles(); break;
+      case 'e': eraseFiles(); break;
+      case 's':
+        {
+          Serial.println("\nLogging Data!!!");
+          write_data = true;   // sets flag to continue to write data until new command is received
+          // opens a file or creates a file if not present,  FILE_WRITE will append data to
+          // to the file created.
+          dataFile = myfs.open("datalog.txt", FILE_WRITE);
+          logData();
+        }
+        break;
+      case 'x': stopLogging(); break;
+      case 'd': dumpLog(); break;
+      case '\r':
+      case '\n':
+      case 'h': menu(); break;
     }
-    if (rr == 'x') stopLogging();
-    if (rr == 'd') dumpLog();
-    if (rr == 'h') menu();
+    while (Serial.read() != -1) ; // remove rest of characters.
   } 
 
   if(write_data) logData();

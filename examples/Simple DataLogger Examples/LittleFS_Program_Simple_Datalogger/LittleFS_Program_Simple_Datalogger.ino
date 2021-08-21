@@ -8,16 +8,19 @@
  */
 #include <LittleFS.h>
 
-// This declares the LittleFS Media type and gives a text name to Identify in use
-LittleFS_RAM myfs;
-// using a char array 
-//char buf[ 390 * 1024 ];  // BUFFER in RAM1 :: Lost on any restart
-DMAMEM char buf[ 390 * 1024 ];  // DMAMEM Uses RAM2 :: Lost on any restart
+LittleFS_Program myfs;
+
+// NOTE: This option is only available on the Teensy 4.0, Teensy 4.1 and Teensy Micromod boards.
+// With the additonal option for security on the T4 the maximum flash available for a 
+// program disk with LittleFS is 960 blocks of 1024 bytes
+#define PROG_FLASH_SIZE 1024 * 1024 * 1 // Specify size to use of onboard Teensy Program Flash chip
+                                        // This creates a LittleFS drive in Teensy PCB FLash. 
 
 File dataFile;  // Specifes that dataFile is of File type
 
 int record_count = 0;
 bool write_data = false;
+uint32_t diskSize;
 
 void setup()
 {
@@ -27,14 +30,29 @@ void setup()
   while (!Serial) {
     // wait for serial port to connect.
   }
+  Serial.println("\n" __FILE__ " " __DATE__ " " __TIME__);
 
-  Serial.print("Initializing LittleFS ...");
+  Serial.println("Initializing LittleFS ...");
 
   // see if the Flash is present and can be initialized:
-  // Note:  SPI is default so if you are using SPI and not SPI for instance
-  //        you can just specify myfs.begin(chipSelect). 
-  if (!myfs.begin(buf, sizeof(buf))) {
-    Serial.printf("Error starting %s\n", "RAM DISK");
+  // lets check to see if the T4 is setup for security first
+  #if ARDUINO_TEENSY40
+    if ((IOMUXC_GPR_GPR11 & 0x100) == 0x100) {
+      //if security is active max disk size is 960x1024
+      if(PROG_FLASH_SIZE > 960*1024){
+        diskSize = 960*1024;
+        Serial.printf("Security Enables defaulted to %u bytes\n", diskSize);  
+      } else {
+        diskSize = PROG_FLASH_SIZE;
+        Serial.printf("Security Not Enabled using %u bytes\n", diskSize);
+      }
+    }
+  #else
+    diskSize = PROG_FLASH_SIZE;
+  #endif
+
+  if (!myfs.begin(diskSize)) {
+    Serial.printf("Error starting %s\n", "PROGRAM FLASH DISK");
     while (1) {
       // Error, so don't do anything more - stay stuck here
     }
@@ -50,19 +68,26 @@ void loop()
   if ( Serial.available() ) {
     char rr;
     rr = Serial.read();
-    if (rr == 'l') listFiles();
-    if (rr == 'e') eraseFiles();
-    if (rr == 's') {
-      Serial.println("\nLogging Data!!!");
-      write_data = true;   // sets flag to continue to write data until new command is received
-      // opens a file or creates a file if not present,  FILE_WRITE will append data to 
-      // to the file created.
-      dataFile = myfs.open("datalog.txt", FILE_WRITE);
-      logData();
+    switch (rr) {
+      case 'l': listFiles(); break;
+      case 'e': eraseFiles(); break;
+      case 's':
+        {
+          Serial.println("\nLogging Data!!!");
+          write_data = true;   // sets flag to continue to write data until new command is received
+          // opens a file or creates a file if not present,  FILE_WRITE will append data to
+          // to the file created.
+          dataFile = myfs.open("datalog.txt", FILE_WRITE);
+          logData();
+        }
+        break;
+      case 'x': stopLogging(); break;
+      case 'd': dumpLog(); break;
+      case '\r':
+      case '\n':
+      case 'h': menu(); break;
     }
-    if (rr == 'x') stopLogging();
-    if (rr == 'd') dumpLog();
-    if (rr == 'h') menu();
+    while (Serial.read() != -1) ; // remove rest of characters. 
   } 
 
   if(write_data) logData();

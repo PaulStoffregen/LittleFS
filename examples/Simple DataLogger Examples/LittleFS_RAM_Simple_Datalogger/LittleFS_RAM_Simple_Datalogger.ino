@@ -7,7 +7,6 @@
  This example code is in the public domain.
  */
 #include <LittleFS.h>
-#include <MemoryHexDump.h>  // https://github.com/KurtE/MemoryHexDump
 
 // This declares the LittleFS Media type and gives a text name to Identify in use
 LittleFS_RAM myfs;
@@ -30,8 +29,6 @@ void setup()
   }
   Serial.println("\n" __FILE__ " " __DATE__ " " __TIME__);
 
-  MemoryHexDump(Serial, buf , sizeof(buf), true, "*** At Startup ***\n", 50);
-
   Serial.print("Initializing LittleFS ...");
 
   // see if the Flash is present and can be initialized:
@@ -43,8 +40,6 @@ void setup()
       // Error, so don't do anything more - stay stuck here
     }
   }
-
-  MemoryHexDump(Serial, buf , sizeof(buf), true, "*** After LittleFS initialized ***\n", 50);
 
   Serial.println("LittleFS initialized.");
 

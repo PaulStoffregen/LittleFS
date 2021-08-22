@@ -51,6 +51,7 @@ void setup()
     diskSize = PROG_FLASH_SIZE;
   #endif
 
+  // checks that the LittFS program has started with the disk size specified
   if (!myfs.begin(diskSize)) {
     Serial.printf("Error starting %s\n", "PROGRAM FLASH DISK");
     while (1) {

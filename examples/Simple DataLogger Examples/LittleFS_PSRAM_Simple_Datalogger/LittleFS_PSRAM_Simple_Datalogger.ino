@@ -32,9 +32,9 @@ void setup()
 
   Serial.print("Initializing LittleFS ...");
 
-  // see if the Flash is present and can be initialized:
-  // Note:  SPI is default so if you are using SPI and not SPI for instance
-  //        you can just specify myfs.begin(chipSelect). 
+  // see if you are able to create a RAM disk in the space you a lotted
+  // buf = is the name of the array you created, sizedf(buf) is how large the 
+  // array is, in our case 390 * 1024.
   if (!myfs.begin(buf, sizeof(buf))) {
     Serial.printf("Error starting %s\n", "PSRAM RAM DISK");
     while (1) {

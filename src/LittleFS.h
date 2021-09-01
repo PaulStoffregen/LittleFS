@@ -27,10 +27,10 @@
 #include "littlefs/lfs.h"
 //#include <algorithm>
 
-class LittleFSFile : public File
+class LittleFSFile : public FileImpl
 {
 private:
-	// Classes derived from File are never meant to be constructed from
+	// Classes derived from FileImpl are never meant to be constructed from
 	// anywhere other than openNextFile() and open() in their parent FS
 	// class.  Only the abstract File class which references these
 	// derived classes is meant to have a public constructor!
@@ -54,12 +54,6 @@ public:
 		//Serial.printf("  LittleFSFile dtor, this=%x\n", (int)this);
 		close();
 	}
-#ifdef FILE_WHOAMI
-	virtual void whoami() {
-		Serial.printf("  LittleFSFile this=%x, refcount=%u\n",
-			(int)this, getRefcount());
-	}
-#endif
 	virtual size_t write(const void *buf, size_t size) {
 		//Serial.println("write");
 		if (!file) return 0;
@@ -130,7 +124,7 @@ public:
 		}
 		//Serial.println("  end of close");
 	}
-	virtual operator bool() {
+	virtual bool isOpen() {
 		return file || dir;
 	}
 	virtual const char * name() {
@@ -179,7 +173,6 @@ public:
 		if (dir) lfs_dir_rewind(lfs, dir);
 	}
 
-	using Print::write;
 private:
 	lfs_t *lfs;
 	lfs_file_t *file;

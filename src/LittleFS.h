@@ -359,8 +359,8 @@ private:
 	}
 	static int static_sync(const struct lfs_config *c) {
 		if ( c->context >= (void *)0x20200000 ) {
-			//Serial.printf("    arm_dcache_flush_delete: ptr=0x%x, size=%d\n", c->context, c->block_count * c->block_size);
-			arm_dcache_flush_delete(c->context, c->block_count * c->block_size );
+			//Serial.printf("    arm_dcache_flush: ptr=0x%x, size=%d\n", c->context, c->block_count * c->block_size);
+			arm_dcache_flush(c->context, c->block_count * c->block_size );
 		}
 		return 0;
 	}

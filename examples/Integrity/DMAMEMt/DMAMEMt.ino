@@ -19,14 +19,14 @@
 
 // This declares the LittleFS Media type and gives a text name to Identify in use
 LittleFS_RAM myfs;  // Using RAM2 as DMAMEM
-char szDiskMem[] = "DMAMEM_DISK";
+char szDiskMem[] = "DMAMEM*t_DISK";
 
 #define LFS_BUF_SIZE 430*1024 // Define the desired size that fits in DMAMEM
-//void *LFS_BUF = (void*)(0x2027ff00-LFS_BUF_SIZE); // RAM2 Addr :: typically survives Restart/Upload, avoid lower 32KB 0x2020000, upper CrashReport area
+void *LFS_BUF = (void*)(0x2027ff00-LFS_BUF_SIZE); // RAM2 Addr :: typically survives Restart/Upload, avoid lower 32KB 0x2020000, upper CrashReport area
 
 //#define LFS_BUF_SIZE 390*1024 // Adjust this for the usable desired size, here in KiloBytes
 #define BUF_OFFSET 32768 // Must be 32768 when using DMAMEM to survive warm restart
-DMAMEM char LFS_BUF[ LFS_BUF_SIZE ];  // DMAMEM Uses RAM2 :: Typically survives Restart/Upload
+//DMAMEM char LFS_BUF[ LFS_BUF_SIZE ];  // DMAMEM Uses RAM2 :: Typically survives Restart/Upload
 
 // Adjust these for amount of disk space used in iterations
 #define MAXNUM 5	// Number of files : ALPHA A-Z is MAX of 26, less for fewer files
@@ -65,8 +65,8 @@ void setup() {
   Serial.println("\n" __FILE__ " " __DATE__ " " __TIME__);
   Serial.println("LittleFS Test : File Integrity"); delay(5);
 
-//  	if (!myfs.begin(LFS_BUF, LFS_BUF_SIZE)) {
-  if (!myfs.begin(&LFS_BUF[BUF_OFFSET], sizeof(LFS_BUF) - BUF_OFFSET)) {
+  	if (!myfs.begin(LFS_BUF, LFS_BUF_SIZE)) {
+//  if (!myfs.begin(&LFS_BUF[BUF_OFFSET], sizeof(LFS_BUF) - BUF_OFFSET)) {
     Serial.printf("Error starting %s\n", szDiskMem);
     while ( 1 );
   }

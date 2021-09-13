@@ -67,8 +67,7 @@ public:
   	}
   	virtual bool timestamp(uint8_t flags, uint16_t year, uint8_t month, uint8_t day,
                  uint8_t hour, uint8_t minute, uint8_t second){return false;}
-#endif
-	
+#endif	
 	virtual size_t write(const void *buf, size_t size) {
 		//Serial.println("write");
 		if (!file) return 0;
@@ -307,7 +306,7 @@ public:
 		//Serial.println("configure "); delay(5);
 		configured = false;
 		if (!ptr) return false;
-		// memset(ptr, 0xFF, size); // always start with blank slate
+		memset(ptr, 0xFF, size); // always start with blank slate
 		size = size & 0xFFFFFF00;
 		memset(&lfs, 0, sizeof(lfs));
 		memset(&config, 0, sizeof(config));
@@ -338,12 +337,9 @@ public:
 		config.file_max = 0;
 		config.attr_max = 0;
 		configured = true;
-		if (lfs_mount(&lfs, &config) < 0) {
-			memset(ptr, 0xFF, size); // always start with blank slate
-			if (lfs_format(&lfs, &config) < 0) return false;
-			//Serial.println("formatted");
-			if (lfs_mount(&lfs, &config) < 0) return false;
-		}
+		if (lfs_format(&lfs, &config) < 0) return false;
+		//Serial.println("formatted");
+		if (lfs_mount(&lfs, &config) < 0) return false;
 		//Serial.println("mounted atfer format");
 		mounted = true;
 		return true;
@@ -649,6 +645,7 @@ private:
 
 };
 #endif
+
 
 
 

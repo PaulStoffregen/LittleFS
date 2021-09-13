@@ -6,33 +6,13 @@
  
  This example code is in the public domain.
  */
-#include <LittleFS_NAND.h>
+#include <LittleFS.h>
 
 // LittleFS supports creating file systems (FS) in multiple memory types.  Depending on the 
 // memory type you want to use you would uncomment one of the following constructors
 
-//LittleFS_SPIFlash myfs;  // Used to create FS on SPI NOR flash chips such as the W25Q16JV*IQ/W25Q16FV,
-                         // for the full list of supported NOR flash see 
-                         // https://github.com/PaulStoffregen/LittleFS#nor-flash
-
-LittleFS_SPINAND myfs;  // Used to create FS on SPI NAND flash chips on a SPI port 
-                          // such as SPI, SPI1, SPI2 etc.  For the full list of supported 
-                          //  NAND Flash chips see https://github.com/PaulStoffregen/LittleFS#nand-flash
-LittleFS_SPINAND nand4; 
-LittleFS_SPINAND nand5; 
-LittleFS_SPINAND nand6; 
-
-
-
-
-//LittleFS_SPIFram myfs;  // Used to create FS on FRAM memory chips such as the FM25V10-G.  
-                          // For the full list of supported chips see https://github.com/PaulStoffregen/LittleFS#fram
-
-const int chipSelect = 3;  // digital pin for Flash or Fram chip CS pin to create FS on QSPI NAND flash chips located on the bottom of the T4.1 such as the W25N01G. for the full list of supported NAND flash see  https://github.com/PaulStoffregen/LittleFS#nand-flash
-const int chipSelect4 = 4;
-const int chipSelect5 = 5;
-const int chipSelect6 = 6;
-
+//LittleFS_QSPIFlash myfs;  // Used to create FS on QSPI NOR flash chips located on the bottom of the T4.1 such as the W25Q16JV*IQ/W25Q16FV,  for the full list of supported NOR flash see https://github.com/PaulStoffregen/LittleFS#nor-flash
+LittleFS_QPINAND myfs;  // Used to create FS on QSPI NAND flash chips located on the bottom of the T4.1 such as the W25N01G. for the full list of supported NAND flash see  https://github.com/PaulStoffregen/LittleFS#nand-flash
 
 File dataFile;  // Specifes that dataFile is of File type
 
@@ -52,35 +32,12 @@ void setup()
   Serial.print("Initializing LittleFS ...");
 
   // see if the Flash is present and can be initialized:
-  // Note:  SPI is default so if you are using SPI and not SPI for instance
-  //        you can just specify myfs.begin(chipSelect). 
-  if (!myfs.begin(chipSelect, SPI)) {
-    Serial.printf("Error starting %s\n", "SPI3 FLASH");
-    //while (1) {
+  if (!myfs.begin()) {
+    Serial.printf("Error starting %s\n", "QSPI FLASH");
+    while (1) {
       // Error, so don't do anything more - stay stuck here
-    //}
+    }
   }
-  if (!nand4.begin(chipSelect4, SPI)) {
-    Serial.printf("Error starting %s\n", "SPI4 FLASH");
-    //while (1) {
-      // Error, so don't do anything more - stay stuck here
-    //}
-  }
-  if (!nand5.begin(chipSelect5, SPI)) {
-    Serial.printf("Error starting %s\n", "SPI5 FLASH");
-    //while (1) {
-      // Error, so don't do anything more - stay stuck here
-    //}
-  }
-  if (!nand6.begin(chipSelect6, SPI)) {
-    Serial.printf("Error starting %s\n", "SPI6 FLASH");
-    //while (1) {
-      // Error, so don't do anything more - stay stuck here
-    //}
-  }
-
-
-  
   Serial.println("LittleFS initialized.");
   
   menu();

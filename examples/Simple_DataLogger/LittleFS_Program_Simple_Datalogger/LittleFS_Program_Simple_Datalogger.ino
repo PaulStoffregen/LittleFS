@@ -6,38 +6,21 @@
  
  This example code is in the public domain.
  */
-#include <LittleFS_NAND.h>
+#include <LittleFS.h>
 
-// LittleFS supports creating file systems (FS) in multiple memory types.  Depending on the 
-// memory type you want to use you would uncomment one of the following constructors
+LittleFS_Program myfs;
 
-//LittleFS_SPIFlash myfs;  // Used to create FS on SPI NOR flash chips such as the W25Q16JV*IQ/W25Q16FV,
-                         // for the full list of supported NOR flash see 
-                         // https://github.com/PaulStoffregen/LittleFS#nor-flash
-
-LittleFS_SPINAND myfs;  // Used to create FS on SPI NAND flash chips on a SPI port 
-                          // such as SPI, SPI1, SPI2 etc.  For the full list of supported 
-                          //  NAND Flash chips see https://github.com/PaulStoffregen/LittleFS#nand-flash
-LittleFS_SPINAND nand4; 
-LittleFS_SPINAND nand5; 
-LittleFS_SPINAND nand6; 
-
-
-
-
-//LittleFS_SPIFram myfs;  // Used to create FS on FRAM memory chips such as the FM25V10-G.  
-                          // For the full list of supported chips see https://github.com/PaulStoffregen/LittleFS#fram
-
-const int chipSelect = 3;  // digital pin for Flash or Fram chip CS pin to create FS on QSPI NAND flash chips located on the bottom of the T4.1 such as the W25N01G. for the full list of supported NAND flash see  https://github.com/PaulStoffregen/LittleFS#nand-flash
-const int chipSelect4 = 4;
-const int chipSelect5 = 5;
-const int chipSelect6 = 6;
-
+// NOTE: This option is only available on the Teensy 4.0, Teensy 4.1 and Teensy Micromod boards.
+// With the additonal option for security on the T4 the maximum flash available for a 
+// program disk with LittleFS is 960 blocks of 1024 bytes
+#define PROG_FLASH_SIZE 1024 * 1024 * 1 // Specify size to use of onboard Teensy Program Flash chip
+                                        // This creates a LittleFS drive in Teensy PCB FLash. 
 
 File dataFile;  // Specifes that dataFile is of File type
 
 int record_count = 0;
 bool write_data = false;
+uint32_t diskSize;
 
 void setup()
 {
@@ -49,38 +32,32 @@ void setup()
   }
   Serial.println("\n" __FILE__ " " __DATE__ " " __TIME__);
 
-  Serial.print("Initializing LittleFS ...");
+  Serial.println("Initializing LittleFS ...");
 
   // see if the Flash is present and can be initialized:
-  // Note:  SPI is default so if you are using SPI and not SPI for instance
-  //        you can just specify myfs.begin(chipSelect). 
-  if (!myfs.begin(chipSelect, SPI)) {
-    Serial.printf("Error starting %s\n", "SPI3 FLASH");
-    //while (1) {
-      // Error, so don't do anything more - stay stuck here
-    //}
-  }
-  if (!nand4.begin(chipSelect4, SPI)) {
-    Serial.printf("Error starting %s\n", "SPI4 FLASH");
-    //while (1) {
-      // Error, so don't do anything more - stay stuck here
-    //}
-  }
-  if (!nand5.begin(chipSelect5, SPI)) {
-    Serial.printf("Error starting %s\n", "SPI5 FLASH");
-    //while (1) {
-      // Error, so don't do anything more - stay stuck here
-    //}
-  }
-  if (!nand6.begin(chipSelect6, SPI)) {
-    Serial.printf("Error starting %s\n", "SPI6 FLASH");
-    //while (1) {
-      // Error, so don't do anything more - stay stuck here
-    //}
-  }
+  // lets check to see if the T4 is setup for security first
+  #if ARDUINO_TEENSY40
+    if ((IOMUXC_GPR_GPR11 & 0x100) == 0x100) {
+      //if security is active max disk size is 960x1024
+      if(PROG_FLASH_SIZE > 960*1024){
+        diskSize = 960*1024;
+        Serial.printf("Security Enables defaulted to %u bytes\n", diskSize);  
+      } else {
+        diskSize = PROG_FLASH_SIZE;
+        Serial.printf("Security Not Enabled using %u bytes\n", diskSize);
+      }
+    }
+  #else
+    diskSize = PROG_FLASH_SIZE;
+  #endif
 
-
-  
+  // checks that the LittFS program has started with the disk size specified
+  if (!myfs.begin(diskSize)) {
+    Serial.printf("Error starting %s\n", "PROGRAM FLASH DISK");
+    while (1) {
+      // Error, so don't do anything more - stay stuck here
+    }
+  }
   Serial.println("LittleFS initialized.");
   
   menu();
@@ -111,7 +88,7 @@ void loop()
       case '\n':
       case 'h': menu(); break;
     }
-    while (Serial.read() != -1) ; // remove rest of characters.
+    while (Serial.read() != -1) ; // remove rest of characters. 
   } 
 
   if(write_data) logData();

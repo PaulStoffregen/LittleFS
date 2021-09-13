@@ -6,34 +6,15 @@
  
  This example code is in the public domain.
  */
-#include <LittleFS_NAND.h>
+#include <LittleFS.h>
 
-// LittleFS supports creating file systems (FS) in multiple memory types.  Depending on the 
-// memory type you want to use you would uncomment one of the following constructors
+// NOTE: This option is only available on the Teensy 4.1 board with added bottomside PSRAM chip(s) in place.
 
-//LittleFS_SPIFlash myfs;  // Used to create FS on SPI NOR flash chips such as the W25Q16JV*IQ/W25Q16FV,
-                         // for the full list of supported NOR flash see 
-                         // https://github.com/PaulStoffregen/LittleFS#nor-flash
+// This declares the LittleFS Media type and gives a text name to Identify in use
+LittleFS_RAM myfs;
 
-LittleFS_SPINAND myfs;  // Used to create FS on SPI NAND flash chips on a SPI port 
-                          // such as SPI, SPI1, SPI2 etc.  For the full list of supported 
-                          //  NAND Flash chips see https://github.com/PaulStoffregen/LittleFS#nand-flash
-LittleFS_SPINAND nand4; 
-LittleFS_SPINAND nand5; 
-LittleFS_SPINAND nand6; 
-
-
-
-
-//LittleFS_SPIFram myfs;  // Used to create FS on FRAM memory chips such as the FM25V10-G.  
-                          // For the full list of supported chips see https://github.com/PaulStoffregen/LittleFS#fram
-
-const int chipSelect = 3;  // digital pin for Flash or Fram chip CS pin to create FS on QSPI NAND flash chips located on the bottom of the T4.1 such as the W25N01G. for the full list of supported NAND flash see  https://github.com/PaulStoffregen/LittleFS#nand-flash
-const int chipSelect4 = 4;
-const int chipSelect5 = 5;
-const int chipSelect6 = 6;
-
-
+#define MYPSRAM 7 // compile time PSRAM size and is T_4.1 specific either 8 or 16, or smaller portion
+EXTMEM char buf[MYPSRAM * 1024 * 1024];  // Contents preserved with Power on Restart and Upload
 File dataFile;  // Specifes that dataFile is of File type
 
 int record_count = 0;
@@ -51,36 +32,15 @@ void setup()
 
   Serial.print("Initializing LittleFS ...");
 
-  // see if the Flash is present and can be initialized:
-  // Note:  SPI is default so if you are using SPI and not SPI for instance
-  //        you can just specify myfs.begin(chipSelect). 
-  if (!myfs.begin(chipSelect, SPI)) {
-    Serial.printf("Error starting %s\n", "SPI3 FLASH");
-    //while (1) {
+  // see if you are able to create a RAM disk in the space you a lotted
+  // buf = is the name of the array you created, sizedf(buf) is how large the 
+  // array is, in our case 390 * 1024.
+  if (!myfs.begin(buf, sizeof(buf))) {
+    Serial.printf("Error starting %s\n", "PSRAM RAM DISK");
+    while (1) {
       // Error, so don't do anything more - stay stuck here
-    //}
+    }
   }
-  if (!nand4.begin(chipSelect4, SPI)) {
-    Serial.printf("Error starting %s\n", "SPI4 FLASH");
-    //while (1) {
-      // Error, so don't do anything more - stay stuck here
-    //}
-  }
-  if (!nand5.begin(chipSelect5, SPI)) {
-    Serial.printf("Error starting %s\n", "SPI5 FLASH");
-    //while (1) {
-      // Error, so don't do anything more - stay stuck here
-    //}
-  }
-  if (!nand6.begin(chipSelect6, SPI)) {
-    Serial.printf("Error starting %s\n", "SPI6 FLASH");
-    //while (1) {
-      // Error, so don't do anything more - stay stuck here
-    //}
-  }
-
-
-  
   Serial.println("LittleFS initialized.");
   
   menu();
@@ -106,6 +66,7 @@ void loop()
         }
         break;
       case 'x': stopLogging(); break;
+
       case 'd': dumpLog(); break;
       case '\r':
       case '\n':

@@ -1,5 +1,5 @@
 /*
-  LittleFS usuage from the LittleFS library
+  LittleFS usage from the LittleFS library
   
   Starting with Teensyduino 1.54, support for LittleFS has been added.
 

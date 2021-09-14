@@ -30,8 +30,7 @@ uint64_t fTot, totSize1;
 LittleFS_SPIFlash myfs;
 
 // Since we are using SPI we need to tell the library what the chip select pin
-//  #define chipSelect 6  // use for access flash on audio or prop shield
-#define chipSelect 7
+#define chipSelect 6  // use for access flash on audio or prop shield
 
 // Specifies that the file, file1 and file3 are File types, same as you would do for creating files
 // on a SD Card

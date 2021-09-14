@@ -22,7 +22,10 @@ LittleFS_SPIFlash myfs;  // Used to create FS on SPI NOR flash chips such as the
 //LittleFS_SPIFram myfs;  // Used to create FS on FRAM memory chips such as the FM25V10-G.  
                           // For the full list of supported chips see https://github.com/PaulStoffregen/LittleFS#fram
 
-const int chipSelect = 7;  // digital pin for Flash or Fram chip CS pin to create FS on QSPI NAND flash chips located on the bottom of the T4.1 such as the W25N01G. for the full list of supported NAND flash see  https://github.com/PaulStoffregen/LittleFS#nand-flash
+//Chip select pin for SPI lash chips such as the W25N01G. For the full list of supported NAND flash see
+// https://github.com/PaulStoffregen/LittleFS#nand-flash.  
+// The chipSelect pin can be any digital pin.  However, if using the Teensy Audio shield chipSelect is pin 6. 
+const int chipSelect = 6; 
 
 File dataFile;  // Specifes that dataFile is of File type
 

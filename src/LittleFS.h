@@ -172,6 +172,28 @@ public:
 	virtual void rewindDirectory(void) {
 		if (dir) lfs_dir_rewind(lfs, dir);
 	}
+#ifdef FS_FILE_SUPPORT_DATES
+	// These will all return false as only some FS support it.
+  	virtual bool getAccessDateTime(uint16_t* pdate, uint16_t* ptime) {
+  		if (pdate) *pdate = 0;
+  		if (ptime) *ptime = 0;
+  		return false;
+  	}
+  	virtual bool getCreateDateTime(uint16_t* pdate, uint16_t* ptime) {
+  		if (pdate) *pdate = 0;
+  		if (ptime) *ptime = 0;
+  		return false;
+  	}
+  	virtual bool getModifyDateTime(uint16_t* pdate, uint16_t* ptime) {
+  		if (pdate) *pdate = 0;
+  		if (ptime) *ptime = 0;
+  		return false;
+  	}
+  	virtual bool timestamp(uint8_t flags, uint16_t year, uint8_t month, uint8_t day,
+                 uint8_t hour, uint8_t minute, uint8_t second) {
+  		return false;
+  	}
+#endif
 
 private:
 	lfs_t *lfs;

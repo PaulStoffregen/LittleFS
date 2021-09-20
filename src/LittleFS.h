@@ -61,10 +61,11 @@ public:
   		*pdate = 0; *ptime = 0; return false;
   	}
   	virtual bool getCreateDateTime(uint16_t* pdate, uint16_t* ptime){
-  		*pdate = 0; *ptime = 0; return false;
-  	}
+		time_t mdt = getCreationTime();
+		*pdate = FSDATE(year(mdt), month(mdt), day(mdt));
+		*ptime = FSTIME(hour(mdt), minute(mdt), second(mdt));
+		return true;  	}
   	virtual bool getModifyDateTime(uint16_t* pdate, uint16_t* ptime){
-  		//*pdate = 0; *ptime = 0; return false;
 		time_t mdt = getModifiedTime();
 		*pdate = FSDATE(year(mdt), month(mdt), day(mdt));
 		*ptime = FSTIME(hour(mdt), minute(mdt), second(mdt));
@@ -72,20 +73,7 @@ public:
   	}
   	virtual bool timestamp(uint8_t flags, uint16_t year, uint8_t month, uint8_t day,
                  uint8_t hour, uint8_t minute, uint8_t second){return false;}
-	virtual time_t getCreationTime() {
-		time_t filetime = 0;
-		int rc = lfs_getattr(lfs, name(), 'c', (void *)&filetime, sizeof(filetime));
-		if(rc != sizeof(filetime))
-			filetime = 0;   // Error so clear read value		
-		return filetime;
-	}
-	virtual time_t getModifiedTime() {
-		time_t filetime = 0;
-		int rc = lfs_getattr(lfs, name(), 'm', (void *)&filetime, sizeof(filetime));
-		if(rc != sizeof(filetime))
-			filetime = 0;   // Error so clear read value		
-		return filetime;
-	}
+
 #endif	
 	virtual size_t write(const void *buf, size_t size) {
 		//Serial.println("write");
@@ -212,6 +200,21 @@ private:
 	lfs_dir_t *dir;
 	char *filename;
 	char fullpath[128];
+	
+	time_t getCreationTime() {
+		time_t filetime = 0;
+		int rc = lfs_getattr(lfs, name(), 'c', (void *)&filetime, sizeof(filetime));
+		if(rc != sizeof(filetime))
+			filetime = 0;   // Error so clear read value		
+		return filetime;
+	}
+	time_t getModifiedTime() {
+		time_t filetime = 0;
+		int rc = lfs_getattr(lfs, name(), 'm', (void *)&filetime, sizeof(filetime));
+		if(rc != sizeof(filetime))
+			filetime = 0;   // Error so clear read value		
+		return filetime;
+	}
 	
 	/** date field for directory entry
 	 * \param[in] year [1980,2107]

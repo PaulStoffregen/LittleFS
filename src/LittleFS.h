@@ -25,6 +25,7 @@
 #include <FS.h>
 #include <SPI.h>
 #include "littlefs/lfs.h"
+#include <TimeLib.h>
 //#include <algorithm>
 
 class LittleFSFile : public FileImpl
@@ -54,6 +55,38 @@ public:
 		//Serial.printf("  LittleFSFile dtor, this=%x\n", (int)this);
 		close();
 	}
+#ifdef FS_FILE_SUPPORT_DATES
+	// These will all return false as only some FS support it.
+  	virtual bool getAccessDateTime(uint16_t* pdate, uint16_t* ptime){
+  		*pdate = 0; *ptime = 0; return false;
+  	}
+  	virtual bool getCreateDateTime(uint16_t* pdate, uint16_t* ptime){
+  		*pdate = 0; *ptime = 0; return false;
+  	}
+  	virtual bool getModifyDateTime(uint16_t* pdate, uint16_t* ptime){
+  		//*pdate = 0; *ptime = 0; return false;
+		time_t mdt = getModifiedTime();
+		*pdate = FSDATE(year(mdt), month(mdt), day(mdt));
+		*ptime = FSTIME(hour(mdt), minute(mdt), second(mdt));
+		return true;
+  	}
+  	virtual bool timestamp(uint8_t flags, uint16_t year, uint8_t month, uint8_t day,
+                 uint8_t hour, uint8_t minute, uint8_t second){return false;}
+	virtual time_t getCreationTime() {
+		time_t filetime = 0;
+		int rc = lfs_getattr(lfs, name(), 'c', (void *)&filetime, sizeof(filetime));
+		if(rc != sizeof(filetime))
+			filetime = 0;   // Error so clear read value		
+		return filetime;
+	}
+	virtual time_t getModifiedTime() {
+		time_t filetime = 0;
+		int rc = lfs_getattr(lfs, name(), 'm', (void *)&filetime, sizeof(filetime));
+		if(rc != sizeof(filetime))
+			filetime = 0;   // Error so clear read value		
+		return filetime;
+	}
+#endif	
 	virtual size_t write(const void *buf, size_t size) {
 		//Serial.println("write");
 		if (!file) return 0;
@@ -172,28 +205,6 @@ public:
 	virtual void rewindDirectory(void) {
 		if (dir) lfs_dir_rewind(lfs, dir);
 	}
-#ifdef FS_FILE_SUPPORT_DATES
-	// These will all return false as only some FS support it.
-  	virtual bool getAccessDateTime(uint16_t* pdate, uint16_t* ptime) {
-  		if (pdate) *pdate = 0;
-  		if (ptime) *ptime = 0;
-  		return false;
-  	}
-  	virtual bool getCreateDateTime(uint16_t* pdate, uint16_t* ptime) {
-  		if (pdate) *pdate = 0;
-  		if (ptime) *ptime = 0;
-  		return false;
-  	}
-  	virtual bool getModifyDateTime(uint16_t* pdate, uint16_t* ptime) {
-  		if (pdate) *pdate = 0;
-  		if (ptime) *ptime = 0;
-  		return false;
-  	}
-  	virtual bool timestamp(uint8_t flags, uint16_t year, uint8_t month, uint8_t day,
-                 uint8_t hour, uint8_t minute, uint8_t second) {
-  		return false;
-  	}
-#endif
 
 private:
 	lfs_t *lfs;
@@ -201,6 +212,32 @@ private:
 	lfs_dir_t *dir;
 	char *filename;
 	char fullpath[128];
+	
+	/** date field for directory entry
+	 * \param[in] year [1980,2107]
+	 * \param[in] month [1,12]
+	 * \param[in] day [1,31]
+	 *
+	 * \return Packed date for directory entry.
+	 */
+	static inline uint16_t FSDATE(uint16_t year, uint8_t month, uint8_t day) {
+	  year -= 1980;
+	  return year > 127 || month > 12 || day > 31 ? 0 :
+			 year << 9 | month << 5 | day;
+	}
+
+	/** time field for directory entry
+	 * \param[in] hour [0,23]
+	 * \param[in] minute [0,59]
+	 * \param[in] second [0,59]
+	 *
+	 * \return Packed time for directory entry.
+	 */
+	static inline uint16_t FSTIME(uint8_t hour, uint8_t minute, uint8_t second) {
+	  return hour > 23 || minute > 59 || second > 59 ? 0 :
+			 hour << 11 | minute << 5 | second >> 1;
+	}
+		
 };
 
 
@@ -218,6 +255,7 @@ public:
 	bool lowLevelFormat(char progressChar=0, Print* pr=&Serial);
 	uint32_t formatUnused(uint32_t blockCnt, uint32_t blockStart);
 	File open(const char *filepath, uint8_t mode = FILE_READ) {
+		int rcode;
 		//Serial.println("LittleFS open");
 		if (!mounted) return File();
 		if (mode == FILE_READ) {
@@ -246,9 +284,26 @@ public:
 			if (!file) return File();
 			if (lfs_file_open(&lfs, file, filepath, LFS_O_RDWR | LFS_O_CREAT) >= 0) {
 				if (mode == FILE_WRITE) {
-					// FILE_WRITE opens at end of file
+					//attributes get written when the file is closed
+					time_t filetime = 0;
+					time_t _now = now();
+					rcode = lfs_getattr(&lfs, filepath, 'm', (void *)&filetime, sizeof(filetime));
+					if(rcode != sizeof(filetime)) {
+						rcode = lfs_setattr(&lfs, filepath, 'c', (const void *) &_now, sizeof(_now));
+						if(rcode < 0)
+							Serial.println("set attribute creation failed");
+					}
+					rcode = lfs_setattr(&lfs, filepath, 'm', (const void *) &_now, sizeof(_now));
+					if(rcode < 0)
+						Serial.println("set attribute modified failed");					
 					lfs_file_seek(&lfs, file, 0, LFS_SEEK_END);
 				} // else FILE_WRITE_BEGIN
+				if(mode == FILE_WRITE_BEGIN) {
+					time_t _now = now();
+					rcode = lfs_setattr(&lfs, filepath, 'c', (const void *) &_now, sizeof(_now));
+					if(rcode < 0)
+						Serial.println("set attribute creation failed");
+				}
 				return File(new LittleFSFile(&lfs, file, filepath));
 			}
 		}
@@ -288,11 +343,14 @@ public:
 		if (!mounted) return 0;
 		return config.block_count * config.block_size;
 	}
+	
+
 protected:
 	bool configured;
 	bool mounted;
 	lfs_t lfs;
 	lfs_config config;
+
 };
 
 

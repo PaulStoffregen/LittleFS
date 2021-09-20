@@ -72,8 +72,46 @@ public:
 		return true;
   	}
   	virtual bool timestamp(uint8_t flags, uint16_t year, uint8_t month, uint8_t day,
-                 uint8_t hour, uint8_t minute, uint8_t second){return false;}
+                 uint8_t hour, uint8_t minute, uint8_t second){
+		tmElements_t tm;
+		tm.Second = second;
+		tm.Minute = minute; 
+		tm.Hour = hour;
+		tm.Wday = 1;
+		tm.Day = day;
+		tm.Month = month;
+		if( year > 99)	
+      		year = year - 1970;
+  		else
+      		year += 30;  
 
+		tm.Year = year; 
+		time_t mdt = makeTime(tm);
+		Serial.printf("$$$timestamp called: %x %u/%u/%u %u:%u:%u\n", flags, month, day, year, hour, minute, second);
+		// need to define these somewhere...
+		//static const uint8_t T_ACCESS = 1;
+		/** set the file's creation date and time */
+		static const uint8_t T_CREATE = 2;
+		/** Set the file's write date and time */
+		static const uint8_t T_WRITE = 4;
+		bool success = true;
+		if (flags & T_CREATE) {
+			int rcode = lfs_setattr(lfs, name(), 'c', (const void *) &mdt, sizeof(mdt));
+			if(rcode < 0) {
+				Serial.println("set attribute create failed");	
+				success = false;
+			}
+		}
+		if (flags & T_WRITE) {
+			int rcode = lfs_setattr(lfs, name(), 'm', (const void *) &mdt, sizeof(mdt));
+			if(rcode < 0) {
+				Serial.println("set attribute modify failed");	
+				success = false;
+			}
+		}
+
+  		return success;
+  	}
 #endif	
 	virtual size_t write(const void *buf, size_t size) {
 		//Serial.println("write");
@@ -290,7 +328,7 @@ public:
 					//attributes get written when the file is closed
 					time_t filetime = 0;
 					time_t _now = now();
-					rcode = lfs_getattr(&lfs, filepath, 'm', (void *)&filetime, sizeof(filetime));
+					rcode = lfs_getattr(&lfs, filepath, 'c', (void *)&filetime, sizeof(filetime));
 					if(rcode != sizeof(filetime)) {
 						rcode = lfs_setattr(&lfs, filepath, 'c', (const void *) &_now, sizeof(_now));
 						if(rcode < 0)

@@ -62,11 +62,13 @@ public:
   	}
   	virtual bool getCreateDateTime(uint16_t* pdate, uint16_t* ptime){
 		time_t mdt = getCreationTime();
+		if (mdt == 0) {*pdate = 0; *ptime=0; return false;} // did not retrieve a date;
 		*pdate = FSDATE(year(mdt), month(mdt), day(mdt));
 		*ptime = FSTIME(hour(mdt), minute(mdt), second(mdt));
 		return true;  	}
   	virtual bool getModifyDateTime(uint16_t* pdate, uint16_t* ptime){
 		time_t mdt = getModifiedTime();
+		if (mdt == 0) {*pdate = 0; *ptime=0; return false;} // did not retrieve a date;
 		*pdate = FSDATE(year(mdt), month(mdt), day(mdt));
 		*ptime = FSTIME(hour(mdt), minute(mdt), second(mdt));
 		return true;

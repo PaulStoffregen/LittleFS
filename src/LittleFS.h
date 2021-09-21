@@ -326,27 +326,21 @@ public:
 			lfs_file_t *file = (lfs_file_t *)malloc(sizeof(lfs_file_t));
 			if (!file) return File();
 			if (lfs_file_open(&lfs, file, filepath, LFS_O_RDWR | LFS_O_CREAT) >= 0) {
-				if (mode == FILE_WRITE) {
-					//attributes get written when the file is closed
-					time_t filetime = 0;
-					time_t _now = now();
-					rcode = lfs_getattr(&lfs, filepath, 'c', (void *)&filetime, sizeof(filetime));
-					if(rcode != sizeof(filetime)) {
-						rcode = lfs_setattr(&lfs, filepath, 'c', (const void *) &_now, sizeof(_now));
-						if(rcode < 0)
-							Serial.println("set attribute creation failed");
-					}
-					rcode = lfs_setattr(&lfs, filepath, 'm', (const void *) &_now, sizeof(_now));
-					if(rcode < 0)
-						Serial.println("set attribute modified failed");					
-					lfs_file_seek(&lfs, file, 0, LFS_SEEK_END);
-				} // else FILE_WRITE_BEGIN
-				if(mode == FILE_WRITE_BEGIN) {
-					time_t _now = now();
+				//attributes get written when the file is closed
+				time_t filetime = 0;
+				time_t _now = now();
+				rcode = lfs_getattr(&lfs, filepath, 'c', (void *)&filetime, sizeof(filetime));
+				if(rcode != sizeof(filetime)) {
 					rcode = lfs_setattr(&lfs, filepath, 'c', (const void *) &_now, sizeof(_now));
 					if(rcode < 0)
 						Serial.println("set attribute creation failed");
 				}
+				rcode = lfs_setattr(&lfs, filepath, 'm', (const void *) &_now, sizeof(_now));
+				if(rcode < 0)
+					Serial.println("set attribute modified failed");					
+				if (mode == FILE_WRITE) {
+					lfs_file_seek(&lfs, file, 0, LFS_SEEK_END);
+				} // else FILE_WRITE_BEGIN
 				return File(new LittleFSFile(&lfs, file, filepath));
 			}
 		}

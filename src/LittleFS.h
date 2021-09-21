@@ -89,7 +89,7 @@ public:
 
 		tm.Year = year; 
 		time_t mdt = makeTime(tm);
-		Serial.printf("$$$timestamp called: %x %u/%u/%u %u:%u:%u\n", flags, month, day, year, hour, minute, second);
+		//Serial.printf("$$$timestamp called: %x %u/%u/%u %u:%u:%u\n", flags, month, day, year, hour, minute, second);
 		// need to define these somewhere...
 		//static const uint8_t T_ACCESS = 1;
 		/** set the file's creation date and time */

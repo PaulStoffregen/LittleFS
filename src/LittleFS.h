@@ -353,8 +353,16 @@ public:
 		return true;
 	}
 	bool mkdir(const char *filepath) {
+		int rcode;
 		if (!mounted) return false;
 		if (lfs_mkdir(&lfs, filepath) < 0) return false;
+		time_t _now = now();
+		rcode = lfs_setattr(&lfs, filepath, 'c', (const void *) &_now, sizeof(_now));
+		if(rcode < 0)
+			Serial.println("set attribute creation failed");
+		rcode = lfs_setattr(&lfs, filepath, 'm', (const void *) &_now, sizeof(_now));
+		if(rcode < 0)
+			Serial.println("set attribute modified failed");
 		return true;
 	}
 	bool rename(const char *oldfilepath, const char *newfilepath) {

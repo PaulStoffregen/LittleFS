@@ -99,17 +99,13 @@ public:
 		bool success = true;
 		if (flags & T_CREATE) {
 			int rcode = lfs_setattr(lfs, name(), 'c', (const void *) &mdt, sizeof(mdt));
-			if(rcode < 0) {
-				Serial.println("set attribute create failed");	
+			if(rcode < 0)
 				success = false;
-			}
 		}
 		if (flags & T_WRITE) {
 			int rcode = lfs_setattr(lfs, name(), 'm', (const void *) &mdt, sizeof(mdt));
-			if(rcode < 0) {
-				Serial.println("set attribute modify failed");	
+			if(rcode < 0) 
 				success = false;
-			}
 		}
 
   		return success;
@@ -203,7 +199,7 @@ public:
 			memset(&info, 0, sizeof(info)); // is this necessary?
 			if (lfs_dir_read(lfs, dir, &info) <= 0) return File();
 		} while (strcmp(info.name, ".") == 0 || strcmp(info.name, "..") == 0);
-		//Serial.printf("  next name = \"%s\"\n", info.name);
+		//Serial.printf("ONF::  next name = \"%s\"\n", info.name);
 		char pathname[128];
 		strlcpy(pathname, fullpath, sizeof(pathname));
 		size_t len = strlen(pathname);
@@ -213,6 +209,7 @@ public:
 			pathname[len] = 0;
 		}
 		strlcpy(pathname + len, info.name, sizeof(pathname) - len);
+		//Serial.print("ONF:: pathname --- "); Serial.println(pathname);
 		if (info.type == LFS_TYPE_REG) {
 			lfs_file_t *f = (lfs_file_t *)malloc(sizeof(lfs_file_t));
 			if (!f) return File();
@@ -243,16 +240,16 @@ private:
 	
 	time_t getCreationTime() {
 		time_t filetime = 0;
-		int rc = lfs_getattr(lfs, name(), 'c', (void *)&filetime, sizeof(filetime));
+		int rc = lfs_getattr(lfs, fullpath, 'c', (void *)&filetime, sizeof(filetime));
 		if(rc != sizeof(filetime))
 			filetime = 0;   // Error so clear read value		
 		return filetime;
 	}
 	time_t getModifiedTime() {
 		time_t filetime = 0;
-		int rc = lfs_getattr(lfs, name(), 'm', (void *)&filetime, sizeof(filetime));
-		if(rc != sizeof(filetime))
-			filetime = 0;   // Error so clear read value		
+		int rc = lfs_getattr(lfs, fullpath, 'm', (void *)&filetime, sizeof(filetime));
+		if(rc != sizeof(filetime)) 
+			filetime = 0;   // Error so clear read value	
 		return filetime;
 	}
 	
@@ -306,7 +303,7 @@ public:
 			if (lfs_stat(&lfs, filepath, &info) < 0) return File();
 			//Serial.printf("LittleFS open got info, name=%s\n", info.name);
 			if (info.type == LFS_TYPE_REG) {
-				//Serial.println("  regular file");
+				Serial.println("FO Read::  regular file");
 				lfs_file_t *file = (lfs_file_t *)malloc(sizeof(lfs_file_t));
 				if (!file) return File();
 				if (lfs_file_open(&lfs, file, filepath, LFS_O_RDONLY) >= 0) {
@@ -314,7 +311,7 @@ public:
 				}
 				free(file);
 			} else { // LFS_TYPE_DIR
-				//Serial.println("  directory");
+				Serial.println("FO Read::  directory");
 				lfs_dir_t *dir = (lfs_dir_t *)malloc(sizeof(lfs_dir_t));
 				if (!dir) return File();
 				if (lfs_dir_open(&lfs, dir, filepath) >= 0) {
@@ -333,11 +330,11 @@ public:
 				if(rcode != sizeof(filetime)) {
 					rcode = lfs_setattr(&lfs, filepath, 'c', (const void *) &_now, sizeof(_now));
 					if(rcode < 0)
-						Serial.println("set attribute creation failed");
+						Serial.println("FO:: set attribute creation failed");
 				}
 				rcode = lfs_setattr(&lfs, filepath, 'm', (const void *) &_now, sizeof(_now));
 				if(rcode < 0)
-					Serial.println("set attribute modified failed");					
+					Serial.println("FO:: set attribute modified failed");
 				if (mode == FILE_WRITE) {
 					lfs_file_seek(&lfs, file, 0, LFS_SEEK_END);
 				} // else FILE_WRITE_BEGIN
@@ -359,10 +356,10 @@ public:
 		time_t _now = now();
 		rcode = lfs_setattr(&lfs, filepath, 'c', (const void *) &_now, sizeof(_now));
 		if(rcode < 0)
-			Serial.println("set attribute creation failed");
+			Serial.println("FD:: set attribute creation failed");
 		rcode = lfs_setattr(&lfs, filepath, 'm', (const void *) &_now, sizeof(_now));
 		if(rcode < 0)
-			Serial.println("set attribute modified failed");
+			Serial.println("FD:: set attribute modified failed");
 		return true;
 	}
 	bool rename(const char *oldfilepath, const char *newfilepath) {

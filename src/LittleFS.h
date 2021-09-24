@@ -325,7 +325,7 @@ public:
 			if (lfs_file_open(&lfs, file, filepath, LFS_O_RDWR | LFS_O_CREAT) >= 0) {
 				//attributes get written when the file is closed
 				time_t filetime = 0;
-				time_t _now = now();
+				time_t _now = Teensy3Clock.get();
 				rcode = lfs_getattr(&lfs, filepath, 'c', (void *)&filetime, sizeof(filetime));
 				if(rcode != sizeof(filetime)) {
 					rcode = lfs_setattr(&lfs, filepath, 'c', (const void *) &_now, sizeof(_now));
@@ -353,7 +353,7 @@ public:
 		int rcode;
 		if (!mounted) return false;
 		if (lfs_mkdir(&lfs, filepath) < 0) return false;
-		time_t _now = now();
+		time_t _now = Teensy3Clock.get();
 		rcode = lfs_setattr(&lfs, filepath, 'c', (const void *) &_now, sizeof(_now));
 		if(rcode < 0)
 			Serial.println("FD:: set attribute creation failed");
@@ -365,6 +365,10 @@ public:
 	bool rename(const char *oldfilepath, const char *newfilepath) {
 		if (!mounted) return false;
 		if (lfs_rename(&lfs, oldfilepath, newfilepath) < 0) return false;
+		time_t _now = Teensy3Clock.get();
+		int rcode = lfs_setattr(&lfs, newfilepath, 'm', (const void *) &_now, sizeof(_now));
+		if(rcode < 0)
+			Serial.println("FD:: set attribute modified failed");
 		return true;
 	}
 	bool remove(const char *filepath) {

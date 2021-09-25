@@ -25,6 +25,7 @@
 #include <FS.h>
 #include <SPI.h>
 #include "littlefs/lfs.h"
+#include <TimeLib.h>
 //#include <algorithm>
 
 class LittleFSFile : public FileImpl
@@ -54,6 +55,39 @@ public:
 		//Serial.printf("  LittleFSFile dtor, this=%x\n", (int)this);
 		close();
 	}
+
+	// These will all return false as only some FS support it.
+
+  	virtual bool getCreateTime(DateTimeFields &tm){
+		uint32_t mdt = getCreationTime();
+		if (mdt == 0) { return false;} // did not retrieve a date;
+		breakTime(mdt, tm);
+		return true;  	}
+  	virtual bool getModifyTime(DateTimeFields &tm){
+		uint32_t mdt = getModifiedTime();
+		if (mdt == 0) {return false;} // did not retrieve a date;
+		breakTime(mdt, tm);
+		return true;
+  	}
+	virtual bool setCreateTime(const DateTimeFields &tm) {
+		if (tm.year < 80 || tm.year > 207) return false;
+		bool success = true;
+		uint32_t mdt = makeTime(tm);
+		int rcode = lfs_setattr(lfs, name(), 'c', (const void *) &mdt, sizeof(mdt));
+		if(rcode < 0)
+			success = false;
+		return success;
+	}
+	virtual bool setModifyTime(const DateTimeFields &tm) {
+		if (tm.year < 80 || tm.year > 207) return false;
+		bool success = true;
+		uint32_t mdt = makeTime(tm);
+		int rcode = lfs_setattr(lfs, name(), 'm', (const void *) &mdt, sizeof(mdt));
+		if(rcode < 0) 
+			success = false;
+		return success;
+	}
+
 	virtual size_t write(const void *buf, size_t size) {
 		//Serial.println("write");
 		if (!file) return 0;
@@ -142,7 +176,7 @@ public:
 			memset(&info, 0, sizeof(info)); // is this necessary?
 			if (lfs_dir_read(lfs, dir, &info) <= 0) return File();
 		} while (strcmp(info.name, ".") == 0 || strcmp(info.name, "..") == 0);
-		//Serial.printf("  next name = \"%s\"\n", info.name);
+		//Serial.printf("ONF::  next name = \"%s\"\n", info.name);
 		char pathname[128];
 		strlcpy(pathname, fullpath, sizeof(pathname));
 		size_t len = strlen(pathname);
@@ -152,6 +186,7 @@ public:
 			pathname[len] = 0;
 		}
 		strlcpy(pathname + len, info.name, sizeof(pathname) - len);
+		//Serial.print("ONF:: pathname --- "); Serial.println(pathname);
 		if (info.type == LFS_TYPE_REG) {
 			lfs_file_t *f = (lfs_file_t *)malloc(sizeof(lfs_file_t));
 			if (!f) return File();
@@ -179,6 +214,47 @@ private:
 	lfs_dir_t *dir;
 	char *filename;
 	char fullpath[128];
+	
+	uint32_t getCreationTime() {
+		uint32_t filetime = 0;
+		int rc = lfs_getattr(lfs, fullpath, 'c', (void *)&filetime, sizeof(filetime));
+		if(rc != sizeof(filetime))
+			filetime = 0;   // Error so clear read value		
+		return filetime;
+	}
+	uint32_t getModifiedTime() {
+		uint32_t filetime = 0;
+		int rc = lfs_getattr(lfs, fullpath, 'm', (void *)&filetime, sizeof(filetime));
+		if(rc != sizeof(filetime)) 
+			filetime = 0;   // Error so clear read value	
+		return filetime;
+	}
+	
+	/** date field for directory entry
+	 * \param[in] year [1980,2107]
+	 * \param[in] month [1,12]
+	 * \param[in] day [1,31]
+	 *
+	 * \return Packed date for directory entry.
+	 */
+	static inline uint16_t FSDATE(uint16_t year, uint8_t month, uint8_t day) {
+	  year -= 1980;
+	  return year > 127 || month > 12 || day > 31 ? 0 :
+			 year << 9 | month << 5 | day;
+	}
+
+	/** time field for directory entry
+	 * \param[in] hour [0,23]
+	 * \param[in] minute [0,59]
+	 * \param[in] second [0,59]
+	 *
+	 * \return Packed time for directory entry.
+	 */
+	static inline uint16_t FSTIME(uint8_t hour, uint8_t minute, uint8_t second) {
+	  return hour > 23 || minute > 59 || second > 59 ? 0 :
+			 hour << 11 | minute << 5 | second >> 1;
+	}
+		
 };
 
 
@@ -196,6 +272,7 @@ public:
 	bool lowLevelFormat(char progressChar=0, Print* pr=&Serial);
 	uint32_t formatUnused(uint32_t blockCnt, uint32_t blockStart);
 	File open(const char *filepath, uint8_t mode = FILE_READ) {
+		int rcode;
 		//Serial.println("LittleFS open");
 		if (!mounted) return File();
 		if (mode == FILE_READ) {
@@ -203,7 +280,6 @@ public:
 			if (lfs_stat(&lfs, filepath, &info) < 0) return File();
 			//Serial.printf("LittleFS open got info, name=%s\n", info.name);
 			if (info.type == LFS_TYPE_REG) {
-				//Serial.println("  regular file");
 				lfs_file_t *file = (lfs_file_t *)malloc(sizeof(lfs_file_t));
 				if (!file) return File();
 				if (lfs_file_open(&lfs, file, filepath, LFS_O_RDONLY) >= 0) {
@@ -211,7 +287,6 @@ public:
 				}
 				free(file);
 			} else { // LFS_TYPE_DIR
-				//Serial.println("  directory");
 				lfs_dir_t *dir = (lfs_dir_t *)malloc(sizeof(lfs_dir_t));
 				if (!dir) return File();
 				if (lfs_dir_open(&lfs, dir, filepath) >= 0) {
@@ -223,8 +298,19 @@ public:
 			lfs_file_t *file = (lfs_file_t *)malloc(sizeof(lfs_file_t));
 			if (!file) return File();
 			if (lfs_file_open(&lfs, file, filepath, LFS_O_RDWR | LFS_O_CREAT) >= 0) {
+				//attributes get written when the file is closed
+				uint32_t filetime = 0;
+				uint32_t _now = Teensy3Clock.get();
+				rcode = lfs_getattr(&lfs, filepath, 'c', (void *)&filetime, sizeof(filetime));
+				if(rcode != sizeof(filetime)) {
+					rcode = lfs_setattr(&lfs, filepath, 'c', (const void *) &_now, sizeof(_now));
+					if(rcode < 0)
+						Serial.println("FO:: set attribute creation failed");
+				}
+				rcode = lfs_setattr(&lfs, filepath, 'm', (const void *) &_now, sizeof(_now));
+				if(rcode < 0)
+					Serial.println("FO:: set attribute modified failed");
 				if (mode == FILE_WRITE) {
-					// FILE_WRITE opens at end of file
 					lfs_file_seek(&lfs, file, 0, LFS_SEEK_END);
 				} // else FILE_WRITE_BEGIN
 				return File(new LittleFSFile(&lfs, file, filepath));
@@ -239,13 +325,25 @@ public:
 		return true;
 	}
 	bool mkdir(const char *filepath) {
+		int rcode;
 		if (!mounted) return false;
 		if (lfs_mkdir(&lfs, filepath) < 0) return false;
+		uint32_t _now = Teensy3Clock.get();
+		rcode = lfs_setattr(&lfs, filepath, 'c', (const void *) &_now, sizeof(_now));
+		if(rcode < 0)
+			Serial.println("FD:: set attribute creation failed");
+		rcode = lfs_setattr(&lfs, filepath, 'm', (const void *) &_now, sizeof(_now));
+		if(rcode < 0)
+			Serial.println("FD:: set attribute modified failed");
 		return true;
 	}
 	bool rename(const char *oldfilepath, const char *newfilepath) {
 		if (!mounted) return false;
 		if (lfs_rename(&lfs, oldfilepath, newfilepath) < 0) return false;
+		uint32_t _now = Teensy3Clock.get();
+		int rcode = lfs_setattr(&lfs, newfilepath, 'm', (const void *) &_now, sizeof(_now));
+		if(rcode < 0)
+			Serial.println("FD:: set attribute modified failed");
 		return true;
 	}
 	bool remove(const char *filepath) {
@@ -266,11 +364,14 @@ public:
 		if (!mounted) return 0;
 		return config.block_count * config.block_size;
 	}
+	
+
 protected:
 	bool configured;
 	bool mounted;
 	lfs_t lfs;
 	lfs_config config;
+
 };
 
 

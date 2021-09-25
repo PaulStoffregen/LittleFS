@@ -60,7 +60,13 @@ void printDirectory(File dir, int numSpaces) {
        // files have sizes, directories do not
        printSpaces(36 - numSpaces - strlen(entry.name()));
        Serial.print("  ");
-       Serial.println(entry.size(), DEC);
+       Serial.print(entry.size(), DEC);
+       DateTimeFields datetime;
+       if (entry.getModifyTime(datetime)) {
+         printSpaces(4);
+         printTime(datetime);
+       }
+       Serial.println();
      }
      entry.close();
    }
@@ -72,3 +78,20 @@ void printSpaces(int num) {
   }
 }
 
+void printTime(const DateTimeFields tm) {
+  const char *months[12] = {
+    "January","February","March","April","May","June",
+    "July","August","September","October","November","December"
+  };
+  if (tm.hour < 10) Serial.print('0');
+  Serial.print(tm.hour);
+  Serial.print(':');
+  if (tm.min < 10) Serial.print('0');
+  Serial.print(tm.min);
+  Serial.print("  ");
+  Serial.print(months[tm.mon]);
+  Serial.print(" ");
+  Serial.print(tm.mday);
+  Serial.print(", ");
+  Serial.print(tm.year + 1900);
+}

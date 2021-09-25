@@ -55,62 +55,38 @@ public:
 		//Serial.printf("  LittleFSFile dtor, this=%x\n", (int)this);
 		close();
 	}
-#ifdef FS_FILE_SUPPORT_DATES
+
 	// These will all return false as only some FS support it.
-  	virtual bool getAccessDateTime(uint16_t* pdate, uint16_t* ptime){
-  		*pdate = 0; *ptime = 0; return false;
-  	}
-  	virtual bool getCreateDateTime(uint16_t* pdate, uint16_t* ptime){
-		time_t mdt = getCreationTime();
-		if (mdt == 0) {*pdate = 0; *ptime=0; return false;} // did not retrieve a date;
-		*pdate = FSDATE(year(mdt), month(mdt), day(mdt));
-		*ptime = FSTIME(hour(mdt), minute(mdt), second(mdt));
+
+  	virtual bool getCreateTime(DateTimeFields &tm){
+		uint32_t mdt = getCreationTime();
+		if (mdt == 0) { return false;} // did not retrieve a date;
+		breakTime(mdt, tm);
 		return true;  	}
-  	virtual bool getModifyDateTime(uint16_t* pdate, uint16_t* ptime){
-		time_t mdt = getModifiedTime();
-		if (mdt == 0) {*pdate = 0; *ptime=0; return false;} // did not retrieve a date;
-		*pdate = FSDATE(year(mdt), month(mdt), day(mdt));
-		*ptime = FSTIME(hour(mdt), minute(mdt), second(mdt));
+  	virtual bool getModifyTime(DateTimeFields &tm){
+		uint32_t mdt = getModifiedTime();
+		if (mdt == 0) {return false;} // did not retrieve a date;
+		breakTime(mdt, tm);
 		return true;
   	}
-  	virtual bool timestamp(uint8_t flags, uint16_t year, uint8_t month, uint8_t day,
-                 uint8_t hour, uint8_t minute, uint8_t second){
-		tmElements_t tm;
-		tm.Second = second;
-		tm.Minute = minute; 
-		tm.Hour = hour;
-		tm.Wday = 1;
-		tm.Day = day;
-		tm.Month = month;
-		if( year > 99)	
-      		year = year - 1970;
-  		else
-      		year += 30;  
-
-		tm.Year = year; 
-		time_t mdt = makeTime(tm);
-		//Serial.printf("$$$timestamp called: %x %u/%u/%u %u:%u:%u\n", flags, month, day, year, hour, minute, second);
-		// need to define these somewhere...
-		//static const uint8_t T_ACCESS = 1;
-		/** set the file's creation date and time */
-		static const uint8_t T_CREATE = 2;
-		/** Set the file's write date and time */
-		static const uint8_t T_WRITE = 4;
+	virtual bool setCreateTime(const DateTimeFields &tm) {
+		if (tm.year < 80 || tm.year > 207) return false;
 		bool success = true;
-		if (flags & T_CREATE) {
-			int rcode = lfs_setattr(lfs, name(), 'c', (const void *) &mdt, sizeof(mdt));
-			if(rcode < 0)
-				success = false;
-		}
-		if (flags & T_WRITE) {
-			int rcode = lfs_setattr(lfs, name(), 'm', (const void *) &mdt, sizeof(mdt));
-			if(rcode < 0) 
-				success = false;
-		}
-
-  		return success;
-  	}
-#endif	
+		uint32_t mdt = makeTime(tm);
+		int rcode = lfs_setattr(lfs, name(), 'c', (const void *) &mdt, sizeof(mdt));
+		if(rcode < 0)
+			success = false;
+		return success;
+	}
+	virtual bool setModifyTime(const DateTimeFields &tm) {
+		if (tm.year < 80 || tm.year > 207) return false;
+		bool success = true;
+		uint32_t mdt = makeTime(tm);
+		int rcode = lfs_setattr(lfs, name(), 'm', (const void *) &mdt, sizeof(mdt));
+		if(rcode < 0) 
+			success = false;
+		return success;
+	}
 	virtual size_t write(const void *buf, size_t size) {
 		//Serial.println("write");
 		if (!file) return 0;
@@ -238,15 +214,15 @@ private:
 	char *filename;
 	char fullpath[128];
 	
-	time_t getCreationTime() {
-		time_t filetime = 0;
+	uint32_t getCreationTime() {
+		uint32_t filetime = 0;
 		int rc = lfs_getattr(lfs, fullpath, 'c', (void *)&filetime, sizeof(filetime));
 		if(rc != sizeof(filetime))
 			filetime = 0;   // Error so clear read value		
 		return filetime;
 	}
-	time_t getModifiedTime() {
-		time_t filetime = 0;
+	uint32_t getModifiedTime() {
+		uint32_t filetime = 0;
 		int rc = lfs_getattr(lfs, fullpath, 'm', (void *)&filetime, sizeof(filetime));
 		if(rc != sizeof(filetime)) 
 			filetime = 0;   // Error so clear read value	
@@ -303,7 +279,6 @@ public:
 			if (lfs_stat(&lfs, filepath, &info) < 0) return File();
 			//Serial.printf("LittleFS open got info, name=%s\n", info.name);
 			if (info.type == LFS_TYPE_REG) {
-				Serial.println("FO Read::  regular file");
 				lfs_file_t *file = (lfs_file_t *)malloc(sizeof(lfs_file_t));
 				if (!file) return File();
 				if (lfs_file_open(&lfs, file, filepath, LFS_O_RDONLY) >= 0) {
@@ -311,7 +286,6 @@ public:
 				}
 				free(file);
 			} else { // LFS_TYPE_DIR
-				Serial.println("FO Read::  directory");
 				lfs_dir_t *dir = (lfs_dir_t *)malloc(sizeof(lfs_dir_t));
 				if (!dir) return File();
 				if (lfs_dir_open(&lfs, dir, filepath) >= 0) {
@@ -324,8 +298,8 @@ public:
 			if (!file) return File();
 			if (lfs_file_open(&lfs, file, filepath, LFS_O_RDWR | LFS_O_CREAT) >= 0) {
 				//attributes get written when the file is closed
-				time_t filetime = 0;
-				time_t _now = Teensy3Clock.get();
+				uint32_t filetime = 0;
+				uint32_t _now = Teensy3Clock.get();
 				rcode = lfs_getattr(&lfs, filepath, 'c', (void *)&filetime, sizeof(filetime));
 				if(rcode != sizeof(filetime)) {
 					rcode = lfs_setattr(&lfs, filepath, 'c', (const void *) &_now, sizeof(_now));
@@ -353,7 +327,7 @@ public:
 		int rcode;
 		if (!mounted) return false;
 		if (lfs_mkdir(&lfs, filepath) < 0) return false;
-		time_t _now = Teensy3Clock.get();
+		uint32_t _now = Teensy3Clock.get();
 		rcode = lfs_setattr(&lfs, filepath, 'c', (const void *) &_now, sizeof(_now));
 		if(rcode < 0)
 			Serial.println("FD:: set attribute creation failed");
@@ -365,7 +339,7 @@ public:
 	bool rename(const char *oldfilepath, const char *newfilepath) {
 		if (!mounted) return false;
 		if (lfs_rename(&lfs, oldfilepath, newfilepath) < 0) return false;
-		time_t _now = Teensy3Clock.get();
+		uint32_t _now = Teensy3Clock.get();
 		int rcode = lfs_setattr(&lfs, newfilepath, 'm', (const void *) &_now, sizeof(_now));
 		if(rcode < 0)
 			Serial.println("FD:: set attribute modified failed");

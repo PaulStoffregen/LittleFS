@@ -25,7 +25,6 @@
 #include <FS.h>
 #include <SPI.h>
 #include "littlefs/lfs.h"
-#include <TimeLib.h>
 //#include <algorithm>
 
 class LittleFSFile : public FileImpl
@@ -87,7 +86,6 @@ public:
 			success = false;
 		return success;
 	}
-
 	virtual size_t write(const void *buf, size_t size) {
 		//Serial.println("write");
 		if (!file) return 0;
@@ -229,32 +227,7 @@ private:
 			filetime = 0;   // Error so clear read value	
 		return filetime;
 	}
-	
-	/** date field for directory entry
-	 * \param[in] year [1980,2107]
-	 * \param[in] month [1,12]
-	 * \param[in] day [1,31]
-	 *
-	 * \return Packed date for directory entry.
-	 */
-	static inline uint16_t FSDATE(uint16_t year, uint8_t month, uint8_t day) {
-	  year -= 1980;
-	  return year > 127 || month > 12 || day > 31 ? 0 :
-			 year << 9 | month << 5 | day;
-	}
 
-	/** time field for directory entry
-	 * \param[in] hour [0,23]
-	 * \param[in] minute [0,59]
-	 * \param[in] second [0,59]
-	 *
-	 * \return Packed time for directory entry.
-	 */
-	static inline uint16_t FSTIME(uint8_t hour, uint8_t minute, uint8_t second) {
-	  return hour > 23 || minute > 59 || second > 59 ? 0 :
-			 hour << 11 | minute << 5 | second >> 1;
-	}
-		
 };
 
 

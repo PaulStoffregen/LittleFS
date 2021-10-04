@@ -241,6 +241,11 @@ public:
 		mounted = false;
 		config.context = nullptr;
 	}
+	virtual bool format(int type=0, char progressChar=0, Print& pr=Serial) {
+		if(type == 0) { return quickFormat(); }
+		if(type == 1) { return lowLevelFormat(progressChar, &pr); }
+		return true;
+	}
 	bool quickFormat();
 	bool lowLevelFormat(char progressChar=0, Print* pr=&Serial);
 	uint32_t formatUnused(uint32_t blockCnt, uint32_t blockStart);

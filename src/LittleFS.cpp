@@ -32,29 +32,30 @@ PROGMEM static const struct chipinfo {
 	uint8_t addrbits;	// number of address bits, 24 or 32
 	uint16_t progsize;	// page size for programming, in bytes
 	uint32_t erasesize;	// sector size for erasing, in bytes
+	uint8_t  erasecmd;	// command to use for sector erase
 	uint32_t chipsize;	// total number of bytes in the chip
 	uint32_t progtime;	// maximum microseconds to wait for page programming
 	uint32_t erasetime;	// maximum microseconds to wait for sector erase
 } known_chips[] = {
-	{{0xEF, 0x40, 0x15}, 24, 256, 4096, 2097152, 3000, 400000}, // Winbond W25Q16JV*IQ/W25Q16FV
-	{{0xEF, 0x40, 0x16}, 24, 256, 4096, 4194304, 3000, 400000}, // Winbond W25Q32JV*IQ/W25Q32FV
-	{{0xEF, 0x40, 0x17}, 24, 256, 4096, 8388608, 3000, 400000}, // Winbond W25Q64JV*IQ/W25Q64FV
-	{{0xEF, 0x40, 0x18}, 24, 256, 4096, 16777216, 3000, 400000}, // Winbond W25Q128JV*IQ/W25Q128FV
-	{{0xEF, 0x40, 0x19}, 32, 256, 4096, 33554432, 3000, 400000}, // Winbond W25Q256JV*IQ
-	{{0xEF, 0x40, 0x20}, 32, 256, 4096, 67108864, 3500, 400000}, // Winbond W25Q512JV*IQ
-	{{0xEF, 0x40, 0x21}, 32, 256, 4096, 134217728, 3500, 400000}, // Winbond W25Q01JV*IQ
-	{{0xEF, 0x70, 0x17}, 24, 256, 4096, 8388608, 3000, 400000}, // Winbond W25Q64JV*IM (DTR)
-	{{0xEF, 0x70, 0x18}, 24, 256, 4096, 16777216, 3000, 400000}, // Winbond W25Q128JV*IM (DTR)
-	{{0xEF, 0x70, 0x19}, 32, 256, 4096, 33554432, 3000, 400000}, // Winbond W25Q256JV*IM (DTR)
-	{{0xEF, 0x70, 0x20}, 32, 256, 4096, 67108864, 3500, 400000}, // Winbond W25Q512JV*IM (DTR)
-	{{0x1F, 0x84, 0x01}, 24, 256, 4096, 524288, 2500, 300000}, // Adesto/Atmel AT25SF041
-	{{0x01, 0x40, 0x14}, 24, 256, 4096, 1048576, 5000, 300000}, // Spansion S25FL208K
-	//FRAM
-	{{0x03, 0x2E, 0xC2}, 24, 64, 128, 1048576, 250, 1200},  //Cypress 8Mb FRAM
-	{{0xC2, 0x24, 0x00}, 24, 64, 128, 131072, 250, 1200},  //Cypress 1Mb FRAM
-	{{0xC2, 0x24, 0x01}, 24, 64, 128, 131072, 250, 1200},  //Cypress 1Mb FRAM, rev1
-	{{0xAE, 0x83, 0x09}, 24, 64, 128, 131072, 250, 1200},  //ROHM MR45V100A 1 Mbit FeRAM Memory
-	{{0xC2, 0x26, 0x08}, 24, 64, 128, 131072, 250, 1200},  //Cypress 4Mb FRAM
+{{0xEF, 0x40, 0x15}, 24, 256, 32768, 0x52, 2097152, 3000, 1600000}, // Winbond W25Q16JV*Q/W25Q16FV
+{{0xEF, 0x40, 0x16}, 24, 256, 32768, 0x52, 4194304, 3000, 1600000}, // Winbond W25Q32JV*Q/W25Q32FV
+{{0xEF, 0x40, 0x17}, 24, 256, 65536, 0xD8, 8388608, 3000, 2000000}, // Winbond W25Q64JV*Q/W25Q64FV
+{{0xEF, 0x40, 0x18}, 24, 256, 65536, 0xD8, 16777216, 3000, 2000000}, // Winbond W25Q128JV*Q/W25Q128FV
+{{0xEF, 0x40, 0x19}, 32, 256, 65536, 0xDC, 33554432, 3000, 2000000}, // Winbond W25Q256JV*Q
+{{0xEF, 0x40, 0x20}, 32, 256, 65536, 0xDC, 67108864, 3500, 2000000}, // Winbond W25Q512JV*Q
+{{0xEF, 0x40, 0x21}, 32, 256, 65536, 0xDC, 134217728, 3500, 2000000}, // Winbond W25Q01JV*Q
+{{0xEF, 0x70, 0x17}, 24, 256, 65536, 0xD8, 8388608, 3000, 2000000}, // Winbond W25Q64JV*M (DTR)
+{{0xEF, 0x70, 0x18}, 24, 256, 65536, 0xD8, 16777216, 3000, 2000000}, // Winbond W25Q128JV*M (DTR)
+{{0xEF, 0x70, 0x19}, 32, 256, 65536, 0xDC, 33554432, 3000, 2000000}, // Winbond W25Q256JV*M (DTR)
+{{0xEF, 0x70, 0x20}, 32, 256, 65536, 0xDC, 67108864, 3500, 2000000}, // Winbond W25Q512JV*M (DTR)
+{{0x1F, 0x84, 0x01}, 24, 256,  4096, 0x20, 524288, 2500, 300000}, // Adesto/Atmel AT25SF041
+{{0x01, 0x40, 0x14}, 24, 256,  4096, 0x20, 1048576, 5000, 300000}, // Spansion S25FL208K
+//FRAM
+{{0x03, 0x2E, 0xC2}, 24, 64, 128, 0, 1048576, 250, 1200},  //Cypress 8Mb FRAM
+{{0xC2, 0x24, 0x00}, 24, 64, 128, 0, 131072, 250, 1200},  //Cypress 1Mb FRAM
+{{0xC2, 0x24, 0x01}, 24, 64, 128, 0, 131072, 250, 1200},  //Cypress 1Mb FRAM, rev1
+{{0xAE, 0x83, 0x09}, 24, 64, 128, 0, 131072, 250, 1200},  //ROHM MR45V100A 1 Mbit FeRAM Memory
+{{0xC2, 0x26, 0x08}, 24, 64, 128, 0, 131072, 250, 1200},  //Cypress 4Mb FRAM
 
 };
 
@@ -113,6 +114,7 @@ bool LittleFS_SPIFlash::begin(uint8_t cspin, SPIClass &spiport)
 	addrbits = info->addrbits;
 	progtime = info->progtime;
 	erasetime = info->erasetime;
+	erasecmd = info->erasecmd;
 	configured = true;
 
 	//Serial.println("attempting to mount existing media");
@@ -418,9 +420,9 @@ int LittleFS_SPIFlash::erase(lfs_block_t block)
 		free(buffer);
 	}
 	const uint32_t addr = block * config.block_size;
-	const uint8_t cmd = (addrbits == 24) ? 0x20 : 0x21; // erase sector
+	//const uint8_t cmd = (addrbits == 24) ? 0x20 : 0x21; // erase sector
 	uint8_t cmdaddr[5];
-	make_command_and_address(cmdaddr, cmd, addr, addrbits);
+	make_command_and_address(cmdaddr, erasecmd, addr, addrbits);
 	//printtbuf(cmdaddr, 1 + (addrbits >> 3));
 	port->beginTransaction(SPICONFIG);
 	digitalWrite(pin, LOW);
@@ -745,7 +747,7 @@ bool LittleFS_QSPIFlash::begin()
 		FLEXSPI2_LUT44 = LUT0(CMD_SDR, PINS1, 0x32) | LUT1(ADDR_SDR, PINS1, 24);
 		FLEXSPI2_LUT45 = LUT0(WRITE_SDR, PINS4, 1);
 		// cmd index 12 = sector erase
-		FLEXSPI2_LUT48 = LUT0(CMD_SDR, PINS1, 0x20) | LUT1(ADDR_SDR, PINS1, 24);
+		FLEXSPI2_LUT48 = LUT0(CMD_SDR, PINS1, info->erasecmd) | LUT1(ADDR_SDR, PINS1, 24);
 		FLEXSPI2_LUT49 = 0;
 	} else {
 		// cmd index 9 = read QSPI (1-1-4)
@@ -756,7 +758,7 @@ bool LittleFS_QSPIFlash::begin()
 		FLEXSPI2_LUT44 = LUT0(CMD_SDR, PINS1, 0x34) | LUT1(ADDR_SDR, PINS1, 32);
 		FLEXSPI2_LUT45 = LUT0(WRITE_SDR, PINS4, 1);
 		// cmd index 12 = sector erase
-		FLEXSPI2_LUT48 = LUT0(CMD_SDR, PINS1, 0x21) | LUT1(ADDR_SDR, PINS1, 32);
+		FLEXSPI2_LUT48 = LUT0(CMD_SDR, PINS1, info->erasecmd) | LUT1(ADDR_SDR, PINS1, 32);
 		FLEXSPI2_LUT49 = 0;
 		// cmd index 9 = read SPI (1-1-1)
 		//FLEXSPI2_LUT36 = LUT0(CMD_SDR, PINS1, 0x13) | LUT1(ADDR_SDR, PINS1, 32);

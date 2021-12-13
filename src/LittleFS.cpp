@@ -151,21 +151,21 @@ bool LittleFS_SPIFram::begin(uint8_t cspin, SPIClass &spiport)
 	uint8_t buf[9];
 	
 	port->beginTransaction(SPICONFIG);
-    digitalWrite(pin, LOW);
+	digitalWrite(pin, LOW);
 	delayNanoseconds(50);
-    port->transfer(0x9f);  //0x9f - JEDEC register
-    for(uint8_t i = 0; i<9; i++)
-      buf[i] = port->transfer(0);
+	port->transfer(0x9f);  //0x9f - JEDEC register
+	for(uint8_t i = 0; i<9; i++) {
+		buf[i] = port->transfer(0);
+	}
 	//delayNanoseconds(50);
-    digitalWriteFast(pin, HIGH); // Chip deselect
-    port->endTransaction();
+	digitalWriteFast(pin, HIGH); // Chip deselect
+	port->endTransaction();
 
-
-    if(buf[0] == 0x7F){
+	if (buf[0] == 0x7F) {
 		buf[0] = buf[6];
 		buf[1] = buf[7];
 		buf[2] = buf[8];
-    }
+	}
 	//Serial.printf("Flash ID: %02X %02X %02X\n", buf[0], buf[1], buf[2]);
 	const struct chipinfo *info = chip_lookup(buf );
 	if (!info) return false;
@@ -458,7 +458,7 @@ int LittleFS_SPIFram::read(lfs_block_t block, lfs_off_t offset, void *buf, lfs_s
 	if (!port) return LFS_ERR_IO;
 	const uint32_t addr = block * config.block_size + offset;
 
-  //FRAM READ OPERATION
+	//FRAM READ OPERATION
 	uint8_t cmdaddr[5];
 	//Serial.printf("  addrbits=%d\n", addrbits);
 	make_command_and_address(cmdaddr, 0x03, addr, addrbits);
@@ -479,7 +479,7 @@ int LittleFS_SPIFram::prog(lfs_block_t block, lfs_off_t offset, const void *buf,
 	if (!port) return LFS_ERR_IO;
 	const uint32_t addr = block * config.block_size + offset;
 
-  // F-RAM WRITE ENABLE COMMAND
+	// F-RAM WRITE ENABLE COMMAND
 	uint8_t cmdaddr[5];
 	//Serial.printf("  addrbits=%d\n", addrbits);
 	make_command_and_address(cmdaddr, 0x02, addr, addrbits);

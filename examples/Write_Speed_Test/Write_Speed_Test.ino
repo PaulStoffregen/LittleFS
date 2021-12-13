@@ -8,6 +8,7 @@
   The main purpose of this example is to verify sustained write performance
   is fast enough for USB MTP.  Microsoft Windows requires at least
   87370 bytes/sec speed to avoid timeout and cancel of MTP SendObject.
+    https://forum.pjrc.com/threads/68139?p=295294&viewfull=1#post295294
 
   This example code is in the public domain.
 */
@@ -21,7 +22,6 @@ LittleFS_SPIFlash myfs;
 
 void setup() {
   Entropy.Initialize();
-  
   Serial.begin(9600);
   while (!Serial) ; // wait for Arduino Serial Monitor
   Serial.println("LittleFS Sustained Write Speed Test");

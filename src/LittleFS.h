@@ -475,6 +475,7 @@ private:
 	SPIClass *port;
 	uint8_t pin;
 	uint8_t addrbits;
+	uint8_t erasecmd;
 	uint32_t progtime;
 	uint32_t erasetime;
 };

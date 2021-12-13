@@ -51,11 +51,11 @@ PROGMEM static const struct chipinfo {
 {{0x1F, 0x84, 0x01}, 24, 256,  4096, 0x20, 524288, 2500, 300000}, // Adesto/Atmel AT25SF041
 {{0x01, 0x40, 0x14}, 24, 256,  4096, 0x20, 1048576, 5000, 300000}, // Spansion S25FL208K
 //FRAM
-{{0x03, 0x2E, 0xC2}, 24, 64, 128, 0, 1048576, 250, 1200},  //Cypress 8Mb FRAM
-{{0xC2, 0x24, 0x00}, 24, 64, 128, 0, 131072, 250, 1200},  //Cypress 1Mb FRAM
+{{0x03, 0x2E, 0xC2}, 24, 64, 128, 0, 1048576, 250, 1200}, //Cypress 8Mb FRAM, CY15B108QN
+{{0xC2, 0x24, 0x00}, 24, 64, 128, 0, 131072, 250, 1200},  //Cypress 1Mb FRAM, FM25V10-G
 {{0xC2, 0x24, 0x01}, 24, 64, 128, 0, 131072, 250, 1200},  //Cypress 1Mb FRAM, rev1
 {{0xAE, 0x83, 0x09}, 24, 64, 128, 0, 131072, 250, 1200},  //ROHM MR45V100A 1 Mbit FeRAM Memory
-{{0xC2, 0x26, 0x08}, 24, 64, 128, 0, 131072, 250, 1200},  //Cypress 4Mb FRAM
+{{0xC2, 0x26, 0x08}, 24, 64, 128, 0, 524288, 250, 1200},  //Cypress 4Mb FRAM, CY15B104Q
 
 };
 
@@ -420,7 +420,6 @@ int LittleFS_SPIFlash::erase(lfs_block_t block)
 		free(buffer);
 	}
 	const uint32_t addr = block * config.block_size;
-	//const uint8_t cmd = (addrbits == 24) ? 0x20 : 0x21; // erase sector
 	uint8_t cmdaddr[5];
 	make_command_and_address(cmdaddr, erasecmd, addr, addrbits);
 	//printtbuf(cmdaddr, 1 + (addrbits >> 3));

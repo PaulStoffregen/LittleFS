@@ -853,10 +853,13 @@ int LittleFS_QSPIFlash::wait(uint32_t microseconds)
 
 #if defined(ARDUINO_TEENSY40)
 #define FLASH_SIZE  0x1F0000
+#define SECTOR_SIZE 32768
 #elif defined(ARDUINO_TEENSY41)
 #define FLASH_SIZE  0x7C0000
+#define SECTOR_SIZE 65536
 #elif defined(ARDUINO_TEENSY_MICROMOD)
 #define FLASH_SIZE  0xFC0000
+#define SECTOR_SIZE 65536
 #endif
 extern unsigned long _flashimagelen;
 uint32_t LittleFS_Program::baseaddr = 0;
@@ -890,8 +893,8 @@ bool LittleFS_Program::begin(uint32_t size)
 	config.sync = &static_sync;
 	config.read_size = 128;
 	config.prog_size = 128;
-	config.block_size = 4096;
-	config.block_count = size >> 12;
+	config.block_size = SECTOR_SIZE;
+	config.block_count = size / SECTOR_SIZE;
 	config.block_cycles = 800;
 	config.cache_size = 128;
 	config.lookahead_size = 128;
@@ -919,7 +922,7 @@ int LittleFS_Program::static_read(const struct lfs_config *c, lfs_block_t block,
 	lfs_off_t offset, void *buffer, lfs_size_t size)
 {
 	//Serial.printf("   prog rd: block=%d, offset=%d, size=%d\n", block, offset, size);
-	const uint8_t *p = (uint8_t *)(baseaddr + block * 4096 + offset);
+	const uint8_t *p = (uint8_t *)(baseaddr + block * SECTOR_SIZE + offset);
 	memcpy(buffer, p, size);
 	return 0;
 }
@@ -927,12 +930,14 @@ int LittleFS_Program::static_read(const struct lfs_config *c, lfs_block_t block,
 // from eeprom.c
 extern "C" void eepromemu_flash_write(void *addr, const void *data, uint32_t len);
 extern "C" void eepromemu_flash_erase_sector(void *addr);
+extern "C" void eepromemu_flash_erase_32K_block(void *addr);
+extern "C" void eepromemu_flash_erase_64K_block(void *addr);
 
 int LittleFS_Program::static_prog(const struct lfs_config *c, lfs_block_t block,
 	lfs_off_t offset, const void *buffer, lfs_size_t size)
 {
 	//Serial.printf("   prog wr: block=%d, offset=%d, size=%d\n", block, offset, size);
-	uint8_t *p = (uint8_t *)(baseaddr + block * 4096 + offset);
+	uint8_t *p = (uint8_t *)(baseaddr + block * SECTOR_SIZE + offset);
 	eepromemu_flash_write(p, buffer, size);
 	return 0;
 }
@@ -940,8 +945,16 @@ int LittleFS_Program::static_prog(const struct lfs_config *c, lfs_block_t block,
 int LittleFS_Program::static_erase(const struct lfs_config *c, lfs_block_t block)
 {
 	//Serial.printf("   prog er: block=%d\n", block);
-	uint8_t *p = (uint8_t *)(baseaddr + block * 4096);
+	uint8_t *p = (uint8_t *)(baseaddr + block * SECTOR_SIZE);
+#if SECTOR_SIZE == 4096
 	eepromemu_flash_erase_sector(p);
+#elif SECTOR_SIZE == 32768
+	eepromemu_flash_erase_32K_block(p);
+#elif SECTOR_SIZE == 65536
+	eepromemu_flash_erase_64K_block(p);
+#else
+#error "Program SECTOR_SIZE must be 4096, 32768, or 65536"
+#endif
 	return 0;
 }
 

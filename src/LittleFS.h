@@ -732,12 +732,12 @@ class FS_NONE : public FS {
 
 class LittleFS_SPI : public FS {
 public:
-  LittleFS_SPI(uint8_t pin) : csPin(pin) {}
-  bool begin();
+  LittleFS_SPI(uint8_t pin=0xff) : csPin_(pin) {}
+  bool begin(uint8_t cspin=0xff, SPIClass &spiport=SPI);
   inline LittleFS * fs() { return (pfs == &fsnone)? nullptr : (LittleFS*)pfs ;}
   inline const char * displayName() {return display_name;}
   // You have full access to internals.
-  uint8_t csPin;
+  uint8_t csPin_;
   LittleFS_SPIFlash flash;
   LittleFS_SPIFram fram;
   LittleFS_SPINAND nand;

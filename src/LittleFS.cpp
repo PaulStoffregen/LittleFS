@@ -963,17 +963,18 @@ int LittleFS_Program::static_erase(const struct lfs_config *c, lfs_block_t block
 //-----------------------------------------------------------------------------
 // Wrapper classes begin methods
 //-----------------------------------------------------------------------------
-bool LittleFS_SPI::begin() {
-  if (flash.begin(csPin)) {
-    sprintf(display_name, (const char *)F("Flash_%u"), csPin);
+bool LittleFS_SPI::begin(uint8_t cspin, SPIClass &spiport) {
+  if (cspin != 0xff) csPin_ = cspin;	
+  if (flash.begin(csPin_, spiport)) {
+    sprintf(display_name, (const char *)F("Flash_%u"), csPin_);
     pfs = &flash;
     return true;
-  } else if (fram.begin(csPin)) {
-    sprintf(display_name, (const char *)F("Fram_%u"), csPin);
+  } else if (fram.begin(csPin_, spiport)) {
+    sprintf(display_name, (const char *)F("Fram_%u"), csPin_);
     pfs = &fram;
     return true;
-  } else if (nand.begin(csPin)) {
-    sprintf(display_name, (const char *)F("NAND_%u"), csPin);
+  } else if (nand.begin(csPin_, spiport)) {
+    sprintf(display_name, (const char *)F("NAND_%u"), csPin_);
     pfs = &nand;
     return true;
   }

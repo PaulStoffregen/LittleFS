@@ -960,8 +960,44 @@ int LittleFS_Program::static_erase(const struct lfs_config *c, lfs_block_t block
 
 
 #endif // __IMXRT1062__
+//-----------------------------------------------------------------------------
+// Wrapper classes begin methods
+//-----------------------------------------------------------------------------
+bool LittleFS_SPI::begin() {
+  if (flash.begin(csPin)) {
+    sprintf(display_name, (const char *)F("Flash_%u"), csPin);
+    pfs = &flash;
+    return true;
+  } else if (fram.begin(csPin)) {
+    sprintf(display_name, (const char *)F("Fram_%u"), csPin);
+    pfs = &fram;
+    return true;
+  } else if (nand.begin(csPin)) {
+    sprintf(display_name, (const char *)F("NAND_%u"), csPin);
+    pfs = &nand;
+    return true;
+  }
+  // none of the above. 
+  pfs = &fsnone;
+  return false;
+}
 
-
-
-
-
+#ifdef __IMXRT1062__
+bool LittleFS_QSPI::begin() {
+  //Serial.printf("Try QSPI");
+  if (flash.begin()) {
+    //Serial.println(" *** Flash ***");
+    strcpy(display_name, (const char *)F("QFlash"));
+    pfs = &flash;
+    return true;
+  } else if (nand.begin()) {
+    //Serial.println(" *** Nand ***");
+    strcpy(display_name, (const char *)F("QNAND"));
+    pfs = &nand;
+    return true;
+  }
+  //Serial.println(" ### Failed ###");
+  pfs = &fsnone;
+  return false;
+}
+#endif // __IMXRT1062__

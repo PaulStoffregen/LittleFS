@@ -22,7 +22,7 @@
 // This declares the LittleFS Media type and gives a text name to Identify in use
 LittleFS_RAM myfs;
 #define MYPSRAM 8 // compile time PSRAM size and is T_4.1 specific either 8 or 16, or smaller portion
-EXTMEM char buf[MYPSRAM * 1024 * 1024];
+EXTMEM char buf[MYPSRAM * 1024 * 1024];	// Contents preserved with Power on Restart and Upload
 char szDiskMem[] = "RAM_DISK";
 
 // Adjust these for amount of disk space used in iterations
@@ -66,7 +66,6 @@ void setup() {
 		Serial.printf("Error starting %s\n", szDiskMem);
 		while( 1 );
 	}
-	// LittleFS_RAM is volatile (does not retain files) directory should always start empty
 	filecount = printDirectoryFilecount( myfs.open("/") );  // Set base value of filecount for disk
 	printDirectory();
 	parseCmd( '?' );

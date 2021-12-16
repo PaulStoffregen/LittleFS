@@ -18,9 +18,8 @@
 */
 
 // This declares the LittleFS Media type and gives a text name to Identify in use
-LittleFS_RAM myfs;  // CAN use either RAM1 or RAM2 as available
-char buf[ 390 * 1024 ];	// BUFFER in RAM1
-//DMAMEM char buf[ 390 * 1024 ];	// DMAMEM Uses RAM2
+LittleFS_RAM myfs;  // Using free space in RAM1 shared with sketch data and stack
+char buf[ 190 * 1024 ];	// BUFFER in RAM1 :: Lost on any restart
 char szDiskMem[] = "RAM_DISK";
 
 // Adjust these for amount of disk space used in iterations
@@ -64,7 +63,6 @@ void setup() {
 		Serial.printf("Error starting %s\n", szDiskMem);
 		while( 1 );
 	}
-	// LittleFS_RAM is volatile (does not retain files) directory should always start empty
 	filecount = printDirectoryFilecount( myfs.open("/") );  // Set base value of filecount for disk
 	printDirectory();
 	parseCmd( '?' );

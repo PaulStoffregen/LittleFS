@@ -750,8 +750,8 @@ public:
   virtual bool rename(const char *oldfilepath, const char *newfilepath) { return pfs->rename(oldfilepath, newfilepath); }
   virtual bool remove(const char *filepath)  { return pfs->remove(filepath); }
   virtual bool rmdir(const char *filepath)  { return pfs->rmdir(filepath); }
-  virtual uint64_t usedSize()  { return 16000000000ul;} 
-  virtual uint64_t totalSize() { return 32000000000ul;}
+  virtual uint64_t usedSize()  { return pfs->usedSize(); } 
+  virtual uint64_t totalSize() { return pfs->totalSize(); }
 
 private:
   FS *pfs = &fsnone;
@@ -783,8 +783,8 @@ public:
   virtual bool rename(const char *oldfilepath, const char *newfilepath) { return pfs->rename(oldfilepath, newfilepath); }
   virtual bool remove(const char *filepath)  { return pfs->remove(filepath); }
   virtual bool rmdir(const char *filepath)  { return pfs->rmdir(filepath); }
-  virtual uint64_t usedSize()  { return 16000000000ul;} 
-  virtual uint64_t totalSize() { return 32000000000ul;}
+  virtual uint64_t usedSize()  { return pfs->usedSize(); } 
+  virtual uint64_t totalSize() { return pfs->totalSize();}
 private:
   FS *pfs = &fsnone;
   char display_name[10];

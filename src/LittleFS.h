@@ -712,11 +712,82 @@ private:
 };
 #endif
 
+//----------------------------------------------------------------------------
+// Simple SPI wrapper that allows you to specify an IO pin and the
+// begin method will try the known types of SPI LittleFS file systems
+// begin methods until it finds one that return true. 
+// you can then query which one using the fs() method. 
+//----------------------------------------------------------------------------
+// This FS simply errors out all calls...
+class FS_NONE : public FS {
+  virtual File open(const char *filename, uint8_t mode = FILE_READ) { return File();}
+  virtual bool exists(const char *filepath) {return false;}
+  virtual bool mkdir(const char *filepath)  {return false;}
+  virtual bool rename(const char *oldfilepath, const char *newfilepath) { return false;}
+  virtual bool remove(const char *filepath) { return false;}
+  virtual bool rmdir(const char *filepath) { return false;}
+  virtual uint64_t usedSize()  { return 0;} 
+  virtual uint64_t totalSize() { return 0;}
+};
+
+class LittleFS_SPI : public FS {
+public:
+  LittleFS_SPI(uint8_t pin=0xff) : csPin_(pin) {}
+  bool begin(uint8_t cspin=0xff, SPIClass &spiport=SPI);
+  inline LittleFS * fs() { return (pfs == &fsnone)? nullptr : (LittleFS*)pfs ;}
+  inline const char * displayName() {return display_name;}
+  // You have full access to internals.
+  uint8_t csPin_;
+  LittleFS_SPIFlash flash;
+  LittleFS_SPIFram fram;
+  LittleFS_SPINAND nand;
+  FS_NONE fsnone;
+  
+  // FS overrides
+  virtual File open(const char *filename, uint8_t mode = FILE_READ) { return pfs->open(filename, mode); }
+  virtual bool exists(const char *filepath) { return pfs->exists(filepath); }
+  virtual bool mkdir(const char *filepath)  { return pfs->mkdir(filepath); }
+  virtual bool rename(const char *oldfilepath, const char *newfilepath) { return pfs->rename(oldfilepath, newfilepath); }
+  virtual bool remove(const char *filepath)  { return pfs->remove(filepath); }
+  virtual bool rmdir(const char *filepath)  { return pfs->rmdir(filepath); }
+  virtual uint64_t usedSize()  { return 16000000000ul;} 
+  virtual uint64_t totalSize() { return 32000000000ul;}
+
+private:
+  FS *pfs = &fsnone;
+  char display_name[10];
+
+};
+
+//----------------------------------------------------------------------------
+// Simple QSPI wraper for T4.1
+//----------------------------------------------------------------------------
+#ifdef __IMXRT1062__
+class LittleFS_QSPI : public FS {
+public:
+  LittleFS_QSPI(){}
+  bool begin();
+  inline LittleFS * fs() { return (pfs == &fsnone)? nullptr : (LittleFS*)pfs ;}
+  inline const char * displayName() {return display_name;}
+  // You have full access to internals.
+  uint8_t csPin;
+  LittleFS_QSPIFlash flash;
+  LittleFS_QPINAND nand;
+  FS_NONE fsnone;
 
 
-
-
-
-
-
+  // FS overrides
+  virtual File open(const char *filename, uint8_t mode = FILE_READ) { return pfs->open(filename, mode); }
+  virtual bool exists(const char *filepath) { return pfs->exists(filepath); }
+  virtual bool mkdir(const char *filepath)  { return pfs->mkdir(filepath); }
+  virtual bool rename(const char *oldfilepath, const char *newfilepath) { return pfs->rename(oldfilepath, newfilepath); }
+  virtual bool remove(const char *filepath)  { return pfs->remove(filepath); }
+  virtual bool rmdir(const char *filepath)  { return pfs->rmdir(filepath); }
+  virtual uint64_t usedSize()  { return 16000000000ul;} 
+  virtual uint64_t totalSize() { return 32000000000ul;}
+private:
+  FS *pfs = &fsnone;
+  char display_name[10];
+};
+#endif
 

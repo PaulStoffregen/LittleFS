@@ -21,10 +21,6 @@ File dataFile;  // Specifes that dataFile is of File type
 int record_count = 0;
 bool write_data = false;
 uint32_t diskSize;
-time_t getTeensy3Time()
-{
-  return Teensy3Clock.get();
-}
 
 void setup()
 {
@@ -37,14 +33,6 @@ void setup()
   Serial.println("\n" __FILE__ " " __DATE__ " " __TIME__);
 
   Serial.println("Initializing LittleFS ...");
-  setSyncProvider(getTeensy3Time);
-  delay(100);
-  if (timeStatus()!= timeSet) {
-    Serial.println("Unable to sync with the RTC");
-  } else {
-    Serial.println("RTC has set the system time");
-  }
-
   
   // see if the Flash is present and can be initialized:
   // lets check to see if the T4 is setup for security first
@@ -198,37 +186,54 @@ void printDirectory(FS &fs) {
 }
 
 void printDirectory(File dir, int numSpaces) {
-  while (true) {
-    File entry = dir.openNextFile();
-    if (! entry) {
-      //Serial.println("** no more files **");
-      break;
-    }
-    printSpaces(numSpaces);
-    Serial.print(entry.name());
-    if (entry.isDirectory()) {
-      Serial.println("/");
-      printDirectory(entry, numSpaces + 2);
-    } else {
-      // files have sizes, directories do not
-      printSpaces(36 - numSpaces - strlen(entry.name()));
-      Serial.print("  ");
-      Serial.println(entry.size(), DEC);
-      TimeElements tm;
-      time_t cr = entry.getCreationTime();
-      breakTime(cr, tm);
-      Serial.printf("    CREATION: %d-%02d-%02d %02d:%02d:%02d\n", (tm.Year) + 1970, tm.Month, tm.Day, tm.Hour, tm.Minute, tm.Second);
-      time_t mt = entry.getModifiedTime();
-      breakTime(mt, tm);
-      Serial.printf("    LastWrite: %d-%02d-%02d %02d:%02d:%02d\n", (tm.Year) + 1970, tm.Month, tm.Day, tm.Hour, tm.Minute, tm.Second);
-
-    }
-    entry.close();
-  }
+   while(true) {
+     File entry = dir.openNextFile();
+     if (! entry) {
+       //Serial.println("** no more files **");
+       break;
+     }
+     printSpaces(numSpaces);
+     Serial.print(entry.name());
+     if (entry.isDirectory()) {
+       Serial.println("/");
+       printDirectory(entry, numSpaces+2);
+     } else {
+       // files have sizes, directories do not
+       printSpaces(36 - numSpaces - strlen(entry.name()));
+       Serial.print("  ");
+       Serial.print(entry.size(), DEC);
+       DateTimeFields datetime;
+       if (entry.getModifyTime(datetime)) {
+         printSpaces(4);
+         printTime(datetime);
+       }
+       Serial.println();
+     }
+     entry.close();
+   }
 }
+
 
 void printSpaces(int num) {
   for (int i = 0; i < num; i++) {
     Serial.print(" ");
   }
+}
+
+void printTime(const DateTimeFields tm) {
+  const char *months[12] = {
+    "January","February","March","April","May","June",
+    "July","August","September","October","November","December"
+  };
+  if (tm.hour < 10) Serial.print('0');
+  Serial.print(tm.hour);
+  Serial.print(':');
+  if (tm.min < 10) Serial.print('0');
+  Serial.print(tm.min);
+  Serial.print("  ");
+  Serial.print(months[tm.mon]);
+  Serial.print(" ");
+  Serial.print(tm.mday);
+  Serial.print(", ");
+  Serial.print(tm.year + 1900);
 }

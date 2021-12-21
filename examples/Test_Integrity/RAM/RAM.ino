@@ -19,15 +19,23 @@
 
 // This declares the LittleFS Media type and gives a text name to Identify in use
 LittleFS_RAM myfs;  // CAN use either RAM1 or RAM2 as available
+#ifdef __IMXRT1062__ // Teensy 4.0, 4.1 and T_MicroMod
 char buf[ 390 * 1024 ];	// BUFFER in RAM1
 //DMAMEM char buf[ 390 * 1024 ];	// DMAMEM Uses RAM2
+#define NUMDIRS 4  // Number of Directories to use 0 is Rootonly
+#define BIGADD 640  // bytes added each pass - bigger will quickly consume more space
+#define SUBADD 512  // bytes added each pass (*times file number)
+#else // Teensy 3.5 and 3.6 have 256KB of RAM shared with user data
+char buf[ 120 * 1024 ];  // BUFFER in RAM
+#define NUMDIRS 2  // Number of Directories to use 0 is Rootonly
+#define BIGADD 320  // bytes added each pass - bigger will quickly consume more space
+#define SUBADD 256  // bytes added each pass (*times file number)
+#endif
+
 char szDiskMem[] = "RAM_DISK";
 
 // Adjust these for amount of disk space used in iterations
 #define MAXNUM 5	// Number of files : ALPHA A-Z is MAX of 26, less for fewer files
-#define NUMDIRS 4  // Number of Directories to use 0 is Rootonly
-#define BIGADD 640	// bytes added each pass - bigger will quickly consume more space
-#define SUBADD 512	// bytes added each pass (*times file number)
 #define MAXFILL 10000 // 66000	// ZERO to disable :: Prevent iterations from over filling - require this much free
 
 // These can likely be left unchanged

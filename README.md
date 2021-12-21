@@ -43,7 +43,9 @@ Cypress | CY15B108QN-40SXI | 8Mb
 ... | FM25V10-G | 1Mb
 ... | FM25V10-G rev1 | 1Mb
 ... | CY15B104Q-SXI | 4Mb
+... | CY15B102Q-SXI | 2Mb
 ROHM | MR45V100A | 1Mb
+Fujitsu | MB85RS2MTAPNF | 2Mb
 
 
 ## USAGE

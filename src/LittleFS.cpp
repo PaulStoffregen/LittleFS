@@ -56,6 +56,9 @@ PROGMEM static const struct chipinfo {
 {{0xC2, 0x24, 0x01}, 24, 64, 128, 0, 131072, 250, 1200},  //Cypress 1Mb FRAM, rev1
 {{0xAE, 0x83, 0x09}, 24, 64, 128, 0, 131072, 250, 1200},  //ROHM MR45V100A 1 Mbit FeRAM Memory
 {{0xC2, 0x26, 0x08}, 24, 64, 128, 0, 524288, 250, 1200},  //Cypress 4Mb FRAM, CY15B104Q
+{{0x60, 0x2A, 0xC2}, 24, 64, 128, 0, 262144, 250, 1200},  //Cypress 2Mb FRAM, CY15B102Q
+{{0x60, 0x2A, 0xC2}, 24, 64, 128, 0, 262144, 250, 1200},  //Cypress 2Mb FRAM, CY15B102Q
+{{0x04, 0x7F, 0x48}, 24, 64, 128, 0, 262144, 250, 1200},  //Fujitsu 2Mb FRAM, MB85RS2MTAPNF
 
 };
 
@@ -143,7 +146,7 @@ bool LittleFS_SPIFram::begin(uint8_t cspin, SPIClass &spiport)
 	pin = cspin;
 	port = &spiport;
 
-	//Serial.println("flash begin");
+	//Serial.printf("flash begin cs:%u\n", pin);
 	configured = false;
 	digitalWrite(pin, HIGH);
 	pinMode(pin, OUTPUT);

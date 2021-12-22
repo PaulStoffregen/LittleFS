@@ -231,7 +231,7 @@ void printTime(const DateTimeFields tm) {
   if (tm.min < 10) Serial.print('0');
   Serial.print(tm.min);
   Serial.print("  ");
-  Serial.print(months[tm.mon]);
+  Serial.print(tm.mon < 12 ? months[tm.mon] : "???");
   Serial.print(" ");
   Serial.print(tm.mday);
   Serial.print(", ");

@@ -748,6 +748,7 @@ public:
   virtual bool rmdir(const char *filepath)  { return pfs->rmdir(filepath); }
   virtual uint64_t usedSize()  { return pfs->usedSize(); } 
   virtual uint64_t totalSize() { return pfs->totalSize(); }
+  virtual bool format(int type=0, char progressChar=0, Print& pr=Serial) { return pfs->format(type, progressChar, pr); }
 
 private:
   FS *pfs = &fsnone;
@@ -781,6 +782,7 @@ public:
   virtual bool rmdir(const char *filepath)  { return pfs->rmdir(filepath); }
   virtual uint64_t usedSize()  { return pfs->usedSize(); } 
   virtual uint64_t totalSize() { return pfs->totalSize();}
+  virtual bool format(int type=0, char progressChar=0, Print& pr=Serial) { return pfs->format(type, progressChar, pr); }
 private:
   FS *pfs = &fsnone;
   char display_name[10];

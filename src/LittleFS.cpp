@@ -739,8 +739,16 @@ bool LittleFS_QSPIFlash::begin()
 	// TODO: is this Winbond specific?  Diable for non-Winbond chips...
 	FLEXSPI2_LUT40 = LUT0(CMD_SDR, PINS1, 0x50);
 	flexspi2_ip_command(10, 0x00800000); // volatile write status enable
-	FLEXSPI2_LUT40 = LUT0(CMD_SDR, PINS1, (quadselectcmd & 0xFF000000)>>24) | LUT1(CMD_SDR, PINS1, (quadselectcmd & 0xFF0000)>>16);
-	FLEXSPI2_LUT41 = LUT0(CMD_SDR, PINS1, (quadselectcmd & 0xFF00)>>8) | LUT1(CMD_SDR, PINS1, quadselectcmd & 0xFF);
+    
+	FLEXSPI2_LUT40 = LUT0(CMD_SDR, PINS1, (quadselectcmd >>24) & 0xFF) | LUT1(CMD_SDR, PINS1, (quadselectcmd >> 16) & 0xFF);
+    if(quadselectcmd & 0xFFFF) {
+	    FLEXSPI2_LUT41 = LUT0(CMD_SDR, PINS1, (quadselectcmd >> 8) & 0xFF);
+        if(quadselectcmd & 0xFF) {
+            FLEXSPI2_LUT41 |= LUT1(CMD_SDR, PINS1, quadselectcmd & 0xFF);
+        }
+    } else {
+        FLEXSPI2_LUT41 = 0;
+    }
 	flexspi2_ip_command(10, 0x00800000); // enable quad mode
 
 	if (addrbits == 24) {

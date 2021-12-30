@@ -36,29 +36,31 @@ PROGMEM static const struct chipinfo {
 	uint32_t chipsize;	// total number of bytes in the chip
 	uint32_t progtime;	// maximum microseconds to wait for page programming
 	uint32_t erasetime;	// maximum microseconds to wait for sector erase
+    uint32_t quadselectcmd; // Command and data for enabling quad mode (4 bytes: command, data, data, data)
 } known_chips[] = {
-{{0xEF, 0x40, 0x15}, 24, 256, 32768, 0x52, 2097152, 3000, 1600000}, // Winbond W25Q16JV*Q/W25Q16FV
-{{0xEF, 0x40, 0x16}, 24, 256, 32768, 0x52, 4194304, 3000, 1600000}, // Winbond W25Q32JV*Q/W25Q32FV
-{{0xEF, 0x40, 0x17}, 24, 256, 65536, 0xD8, 8388608, 3000, 2000000}, // Winbond W25Q64JV*Q/W25Q64FV
-{{0xEF, 0x40, 0x18}, 24, 256, 65536, 0xD8, 16777216, 3000, 2000000}, // Winbond W25Q128JV*Q/W25Q128FV
-{{0xEF, 0x40, 0x19}, 32, 256, 65536, 0xDC, 33554432, 3000, 2000000}, // Winbond W25Q256JV*Q
-{{0xEF, 0x40, 0x20}, 32, 256, 65536, 0xDC, 67108864, 3500, 2000000}, // Winbond W25Q512JV*Q
-{{0xEF, 0x40, 0x21}, 32, 256, 65536, 0xDC, 134217728, 3500, 2000000}, // Winbond W25Q01JV*Q
-{{0xEF, 0x70, 0x17}, 24, 256, 65536, 0xD8, 8388608, 3000, 2000000}, // Winbond W25Q64JV*M (DTR)
-{{0xEF, 0x70, 0x18}, 24, 256, 65536, 0xD8, 16777216, 3000, 2000000}, // Winbond W25Q128JV*M (DTR)
-{{0xEF, 0x70, 0x19}, 32, 256, 65536, 0xDC, 33554432, 3000, 2000000}, // Winbond W25Q256JV*M (DTR)
-{{0xEF, 0x70, 0x20}, 32, 256, 65536, 0xDC, 67108864, 3500, 2000000}, // Winbond W25Q512JV*M (DTR)
-{{0x1F, 0x84, 0x01}, 24, 256,  4096, 0x20, 524288, 2500, 300000}, // Adesto/Atmel AT25SF041
-{{0x01, 0x40, 0x14}, 24, 256,  4096, 0x20, 1048576, 5000, 300000}, // Spansion S25FL208K
+{{0xEF, 0x40, 0x15}, 24, 256, 32768, 0x52,   2097152, 3000, 1600000, 0x31020000}, // Winbond W25Q16JV*Q/W25Q16FV
+{{0xEF, 0x40, 0x16}, 24, 256, 32768, 0x52,   4194304, 3000, 1600000, 0x31020000}, // Winbond W25Q32JV*Q/W25Q32FV
+{{0xEF, 0x40, 0x17}, 24, 256, 65536, 0xD8,   8388608, 3000, 2000000, 0x31020000}, // Winbond W25Q64JV*Q/W25Q64FV
+{{0xEF, 0x40, 0x18}, 24, 256, 65536, 0xD8,  16777216, 3000, 2000000, 0x31020000}, // Winbond W25Q128JV*Q/W25Q128FV
+{{0xEF, 0x40, 0x19}, 32, 256, 65536, 0xDC,  33554432, 3000, 2000000, 0x31020000}, // Winbond W25Q256JV*Q
+{{0xEF, 0x40, 0x20}, 32, 256, 65536, 0xDC,  67108864, 3500, 2000000, 0x31020000}, // Winbond W25Q512JV*Q
+{{0xEF, 0x40, 0x21}, 32, 256, 65536, 0xDC, 134217728, 3500, 2000000, 0x31020000}, // Winbond W25Q01JV*Q
+{{0xEF, 0x70, 0x17}, 24, 256, 65536, 0xD8,   8388608, 3000, 2000000, 0x31020000}, // Winbond W25Q64JV*M (DTR)
+{{0xEF, 0x70, 0x18}, 24, 256, 65536, 0xD8,  16777216, 3000, 2000000, 0x31020000}, // Winbond W25Q128JV*M (DTR)
+{{0xEF, 0x70, 0x19}, 32, 256, 65536, 0xDC,  33554432, 3000, 2000000, 0x31020000}, // Winbond W25Q256JV*M (DTR)
+{{0xEF, 0x70, 0x20}, 32, 256, 65536, 0xDC,  67108864, 3500, 2000000, 0x31020000}, // Winbond W25Q512JV*M (DTR)
+{{0x1F, 0x84, 0x01}, 24, 256,  4096, 0x20,    524288, 2500,  300000, 0x31020000}, // Adesto/Atmel AT25SF041
+{{0x01, 0x40, 0x14}, 24, 256,  4096, 0x20,   1048576, 5000,  300000, 0x31020000}, // Spansion S25FL208K
+{{0xC8, 0x40, 0x15}, 24, 256,  4096, 0x20,   2097152, 5000,  300000, 0x01000200}, // GigaDevice GD25Q16C
 //FRAM
-{{0x03, 0x2E, 0xC2}, 24, 64, 128, 0, 1048576, 250, 1200}, //Cypress 8Mb FRAM, CY15B108QN
-{{0xC2, 0x24, 0x00}, 24, 64, 128, 0, 131072, 250, 1200},  //Cypress 1Mb FRAM, FM25V10-G
-{{0xC2, 0x24, 0x01}, 24, 64, 128, 0, 131072, 250, 1200},  //Cypress 1Mb FRAM, rev1
-{{0xAE, 0x83, 0x09}, 24, 64, 128, 0, 131072, 250, 1200},  //ROHM MR45V100A 1 Mbit FeRAM Memory
-{{0xC2, 0x26, 0x08}, 24, 64, 128, 0, 524288, 250, 1200},  //Cypress 4Mb FRAM, CY15B104Q
-{{0x60, 0x2A, 0xC2}, 24, 64, 128, 0, 262144, 250, 1200},  //Cypress 2Mb FRAM, CY15B102Q
-{{0x60, 0x2A, 0xC2}, 24, 64, 128, 0, 262144, 250, 1200},  //Cypress 2Mb FRAM, CY15B102Q
-{{0x04, 0x7F, 0x48}, 24, 64, 128, 0, 262144, 250, 1200},  //Fujitsu 2Mb FRAM, MB85RS2MTAPNF
+{{0x03, 0x2E, 0xC2}, 24,  64,   128,    0,   1048576,  250,    1200,          0}, //Cypress 8Mb FRAM, CY15B108QN
+{{0xC2, 0x24, 0x00}, 24,  64,   128,    0,    131072,  250,    1200,          0}, //Cypress 1Mb FRAM, FM25V10-G
+{{0xC2, 0x24, 0x01}, 24,  64,   128,    0,    131072,  250,    1200,          0}, //Cypress 1Mb FRAM, rev1
+{{0xAE, 0x83, 0x09}, 24,  64,   128,    0,    131072,  250,    1200,          0}, //ROHM MR45V100A 1 Mbit FeRAM Memory
+{{0xC2, 0x26, 0x08}, 24,  64,   128,    0,    524288,  250,    1200,          0}, //Cypress 4Mb FRAM, CY15B104Q
+{{0x60, 0x2A, 0xC2}, 24,  64,   128,    0,    262144,  250,    1200,          0}, //Cypress 2Mb FRAM, CY15B102Q
+{{0x60, 0x2A, 0xC2}, 24,  64,   128,    0,    262144,  250,    1200,          0}, //Cypress 2Mb FRAM, CY15B102Q
+{{0x04, 0x7F, 0x48}, 24,  64,   128,    0,    262144,  250,    1200,          0}, //Fujitsu 2Mb FRAM, MB85RS2MTAPNF
 
 };
 
@@ -725,6 +727,7 @@ bool LittleFS_QSPIFlash::begin()
 	addrbits = info->addrbits;
 	progtime = info->progtime;
 	erasetime = info->erasetime;
+    quadselectcmd = info->quadselectcmd;
 	configured = true;
 
 	// configure FlexSPI2 for chip's size
@@ -736,8 +739,16 @@ bool LittleFS_QSPIFlash::begin()
 	// TODO: is this Winbond specific?  Diable for non-Winbond chips...
 	FLEXSPI2_LUT40 = LUT0(CMD_SDR, PINS1, 0x50);
 	flexspi2_ip_command(10, 0x00800000); // volatile write status enable
-	FLEXSPI2_LUT40 = LUT0(CMD_SDR, PINS1, 0x31) | LUT1(CMD_SDR, PINS1, 0x02);
-	FLEXSPI2_LUT41 = 0;
+    
+	FLEXSPI2_LUT40 = LUT0(CMD_SDR, PINS1, (quadselectcmd >>24) & 0xFF) | LUT1(CMD_SDR, PINS1, (quadselectcmd >> 16) & 0xFF);
+    if(quadselectcmd & 0xFFFF) {
+	    FLEXSPI2_LUT41 = LUT0(CMD_SDR, PINS1, (quadselectcmd >> 8) & 0xFF);
+        if(quadselectcmd & 0xFF) {
+            FLEXSPI2_LUT41 |= LUT1(CMD_SDR, PINS1, quadselectcmd & 0xFF);
+        }
+    } else {
+        FLEXSPI2_LUT41 = 0;
+    }
 	flexspi2_ip_command(10, 0x00800000); // enable quad mode
 
 	if (addrbits == 24) {

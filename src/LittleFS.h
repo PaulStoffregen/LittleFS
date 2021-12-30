@@ -549,6 +549,7 @@ private:
 	uint8_t addrbits;
 	uint32_t progtime;
 	uint32_t erasetime;
+    uint32_t quadselectcmd;
 };
 #else
 class LittleFS_QSPIFlash : public LittleFS

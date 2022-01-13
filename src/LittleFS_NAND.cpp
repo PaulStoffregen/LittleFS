@@ -777,7 +777,7 @@ bool LittleFS_SPINAND::lowLevelFormat(char progressChar, Print* pr)
 
 
 const char * LittleFS_SPINAND::getPN(){
-  const uint8_t buf[5] = {0x9F, 0, 0, 0, 0};
+  const uint8_t cmd_buf[5] = {0x9F, 0, 0, 0, 0};
   uint8_t buf[5];
   
   SPI.beginTransaction(SPICONFIG_NAND);

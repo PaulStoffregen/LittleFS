@@ -446,6 +446,7 @@ public:
 		port = nullptr;
 	}
 	bool begin(uint8_t cspin, SPIClass &spiport=SPI);
+	const char * getPN();
 private:
 	int read(lfs_block_t block, lfs_off_t offset, void *buf, lfs_size_t size);
 	int prog(lfs_block_t block, lfs_off_t offset, const void *buf, lfs_size_t size);
@@ -485,6 +486,7 @@ public:
 		port = nullptr;
 	}
 	bool begin(uint8_t cspin, SPIClass &spiport=SPI);
+	const char * getPN();
 private:
 	int read(lfs_block_t block, lfs_off_t offset, void *buf, lfs_size_t size);
 	int prog(lfs_block_t block, lfs_off_t offset, const void *buf, lfs_size_t size);
@@ -524,6 +526,7 @@ class LittleFS_QSPIFlash : public LittleFS
 public:
 	LittleFS_QSPIFlash() { }
 	bool begin();
+	const char * getPN();
 private:
 	int read(lfs_block_t block, lfs_off_t offset, void *buf, lfs_size_t size);
 	int prog(lfs_block_t block, lfs_off_t offset, const void *buf, lfs_size_t size);
@@ -597,7 +600,7 @@ public:
 	void readBBLUT(uint16_t *LBA, uint16_t *PBA, uint8_t *linkStatus);
 	bool lowLevelFormat(char progressChar, Print* pr=&Serial);
 	uint8_t addBBLUT(uint32_t block_address);  //temporary for testing
-  
+    const char * getPN();
 private:
 	int read(lfs_block_t block, lfs_off_t offset, void *buf, lfs_size_t size);
 	int prog(lfs_block_t block, lfs_off_t offset, const void *buf, lfs_size_t size);
@@ -660,7 +663,7 @@ public:
 	void readBBLUT(uint16_t *LBA, uint16_t *PBA, uint8_t *linkStatus);
 	bool lowLevelFormat(char progressChar);
 	uint8_t addBBLUT(uint32_t block_address);  //temporary for testing
-	
+	const char * getPN();
 private:
 	int read(lfs_block_t block, lfs_off_t offset, void *buf, lfs_size_t size);
 	int prog(lfs_block_t block, lfs_off_t offset, const void *buf, lfs_size_t size);

@@ -36,29 +36,31 @@ PROGMEM static const struct chipinfo {
 	uint32_t chipsize;	// total number of bytes in the chip
 	uint32_t progtime;	// maximum microseconds to wait for page programming
 	uint32_t erasetime;	// maximum microseconds to wait for sector erase
+	const char *pn;		//flash name
 } known_chips[] = {
-{{0xEF, 0x40, 0x15}, 24, 256, 32768, 0x52, 2097152, 3000, 1600000}, // Winbond W25Q16JV*Q/W25Q16FV
-{{0xEF, 0x40, 0x16}, 24, 256, 32768, 0x52, 4194304, 3000, 1600000}, // Winbond W25Q32JV*Q/W25Q32FV
-{{0xEF, 0x40, 0x17}, 24, 256, 65536, 0xD8, 8388608, 3000, 2000000}, // Winbond W25Q64JV*Q/W25Q64FV
-{{0xEF, 0x40, 0x18}, 24, 256, 65536, 0xD8, 16777216, 3000, 2000000}, // Winbond W25Q128JV*Q/W25Q128FV
-{{0xEF, 0x40, 0x19}, 32, 256, 65536, 0xDC, 33554432, 3000, 2000000}, // Winbond W25Q256JV*Q
-{{0xEF, 0x40, 0x20}, 32, 256, 65536, 0xDC, 67108864, 3500, 2000000}, // Winbond W25Q512JV*Q
-{{0xEF, 0x40, 0x21}, 32, 256, 65536, 0xDC, 134217728, 3500, 2000000}, // Winbond W25Q01JV*Q
-{{0xEF, 0x70, 0x17}, 24, 256, 65536, 0xD8, 8388608, 3000, 2000000}, // Winbond W25Q64JV*M (DTR)
-{{0xEF, 0x70, 0x18}, 24, 256, 65536, 0xD8, 16777216, 3000, 2000000}, // Winbond W25Q128JV*M (DTR)
-{{0xEF, 0x70, 0x19}, 32, 256, 65536, 0xDC, 33554432, 3000, 2000000}, // Winbond W25Q256JV*M (DTR)
-{{0xEF, 0x70, 0x20}, 32, 256, 65536, 0xDC, 67108864, 3500, 2000000}, // Winbond W25Q512JV*M (DTR)
-{{0x1F, 0x84, 0x01}, 24, 256,  4096, 0x20, 524288, 2500, 300000}, // Adesto/Atmel AT25SF041
-{{0x01, 0x40, 0x14}, 24, 256,  4096, 0x20, 1048576, 5000, 300000}, // Spansion S25FL208K
+{{0xEF, 0x40, 0x15}, 24, 256, 32768, 0x52, 2097152, 3000, 1600000, "W25Q16JV*Q/W25Q16FV"},  // Winbond W25Q16JV*Q/W25Q16FV
+{{0xEF, 0x40, 0x16}, 24, 256, 32768, 0x52, 4194304, 3000, 1600000, "W25Q32JV*Q/W25Q32FV"},  // Winbond W25Q32JV*Q/W25Q32FV
+{{0xEF, 0x40, 0x17}, 24, 256, 65536, 0xD8, 8388608, 3000, 2000000, "W25Q64JV*Q/W25Q64FV"},  // Winbond W25Q64JV*Q/W25Q64FV
+{{0xEF, 0x40, 0x18}, 24, 256, 65536, 0xD8, 16777216, 3000, 2000000, "W25Q128JV*Q/W25Q128FV"}, // Winbond W25Q128JV*Q/W25Q128FV
+{{0xEF, 0x40, 0x19}, 32, 256, 65536, 0xDC, 33554432, 3000, 2000000, "W25Q256JV*Q"}, // Winbond W25Q256JV*Q
+{{0xEF, 0x40, 0x20}, 32, 256, 65536, 0xDC, 67108864, 3500, 2000000, "W25Q512JV*Q"}, // Winbond W25Q512JV*Q
+{{0xEF, 0x40, 0x21}, 32, 256, 65536, 0xDC, 134217728, 3500, 2000000, "W25Q01JV*Q"},// Winbond W25Q01JV*Q
+{{0xEF, 0x70, 0x17}, 24, 256, 65536, 0xD8, 8388608, 3000, 2000000, "W25Q64JV*M (DTR)"},  // Winbond W25Q64JV*M (DTR)
+{{0xEF, 0x70, 0x18}, 24, 256, 65536, 0xD8, 16777216, 3000, 2000000, "W25Q128JV*M (DTR)"}, // Winbond W25Q128JV*M (DTR)
+{{0xEF, 0x70, 0x19}, 32, 256, 65536, 0xDC, 33554432, 3000, 2000000, "W25Q256JV*M (DTR)"}, // Winbond W25Q256JV*M (DTR)
+{{0xEF, 0x80, 0x19}, 32, 256, 65536, 0xDC, 33554432, 3000, 2000000, "W25Q256JW*M"}, // Winbond (W25Q256JW*M)
+{{0xEF, 0x70, 0x20}, 32, 256, 65536, 0xDC, 67108864, 3500, 2000000, "W25Q512JV*M (DTR)"}, // Winbond W25Q512JV*M (DTR)
+{{0x1F, 0x84, 0x01}, 24, 256,  4096, 0x20, 524288, 2500, 300000, "AT25SF041"},    // Adesto/Atmel AT25SF041
+{{0x01, 0x40, 0x14}, 24, 256,  4096, 0x20, 1048576, 5000, 300000, "S25FL208K"},   // Spansion S25FL208K
 //FRAM
-{{0x03, 0x2E, 0xC2}, 24, 64, 128, 0, 1048576, 250, 1200}, //Cypress 8Mb FRAM, CY15B108QN
-{{0xC2, 0x24, 0x00}, 24, 64, 128, 0, 131072, 250, 1200},  //Cypress 1Mb FRAM, FM25V10-G
-{{0xC2, 0x24, 0x01}, 24, 64, 128, 0, 131072, 250, 1200},  //Cypress 1Mb FRAM, rev1
-{{0xAE, 0x83, 0x09}, 24, 64, 128, 0, 131072, 250, 1200},  //ROHM MR45V100A 1 Mbit FeRAM Memory
-{{0xC2, 0x26, 0x08}, 24, 64, 128, 0, 524288, 250, 1200},  //Cypress 4Mb FRAM, CY15B104Q
-{{0x60, 0x2A, 0xC2}, 24, 64, 128, 0, 262144, 250, 1200},  //Cypress 2Mb FRAM, CY15B102Q
-{{0x60, 0x2A, 0xC2}, 24, 64, 128, 0, 262144, 250, 1200},  //Cypress 2Mb FRAM, CY15B102Q
-{{0x04, 0x7F, 0x48}, 24, 64, 128, 0, 262144, 250, 1200},  //Fujitsu 2Mb FRAM, MB85RS2MTAPNF
+{{0x03, 0x2E, 0xC2}, 24, 64, 128, 0, 1048576, 250, 1200, "CY15B108QN"}, //Cypress 8Mb FRAM, CY15B108QN
+{{0xC2, 0x24, 0x00}, 24, 64, 128, 0, 131072, 250, 1200, "FM25V10-G"},  //Cypress 1Mb FRAM, FM25V10-G
+{{0xC2, 0x24, 0x01}, 24, 64, 128, 0, 131072, 250, 1200, "FM25V10-G (rev 1)"},  //Cypress 1Mb FRAM, rev1
+{{0xAE, 0x83, 0x09}, 24, 64, 128, 0, 131072, 250, 1200, "MR45V100A"},  //ROHM MR45V100A 1 Mbit FeRAM Memory
+{{0xC2, 0x26, 0x08}, 24, 64, 128, 0, 524288, 250, 1200, "CY15B104Q"},  //Cypress 4Mb FRAM, CY15B104Q
+{{0x60, 0x2A, 0xC2}, 24, 64, 128, 0, 262144, 250, 1200, "CY15B102Q"},  //Cypress 2Mb FRAM, CY15B102Q
+{{0x60, 0x2A, 0xC2}, 24, 64, 128, 0, 262144, 250, 1200, "CY15B102Q"},  //Cypress 2Mb FRAM, CY15B102Q
+{{0x04, 0x7F, 0x48}, 24, 64, 128, 0, 262144, 250, 1200, "MB85RS2MTAPNF"},  //Fujitsu 2Mb FRAM, MB85RS2MTAPNF
 
 };
 
@@ -141,6 +143,21 @@ bool LittleFS_SPIFlash::begin(uint8_t cspin, SPIClass &spiport)
 }
 
 FLASHMEM
+const char * LittleFS_SPIFlash::getPN(){
+  const uint8_t cmd_buf[4] = {0x9F, 0, 0, 0};
+  uint8_t buf[5];
+  port->beginTransaction(SPICONFIG);
+  digitalWrite(pin, LOW);
+  port->transfer(cmd_buf, buf, 4);
+  digitalWrite(pin, HIGH);
+  port->endTransaction();
+
+  const struct chipinfo *info = chip_lookup(buf + 1);
+
+  return info->pn;
+}
+
+FLASHMEM
 bool LittleFS_SPIFram::begin(uint8_t cspin, SPIClass &spiport)
 {
 	pin = cspin;
@@ -216,6 +233,31 @@ bool LittleFS_SPIFram::begin(uint8_t cspin, SPIClass &spiport)
 	return true;
 }
 
+FLASHMEM
+const char * LittleFS_SPIFram::getPN(){
+	uint8_t buf[9];
+	
+	port->beginTransaction(SPICONFIG);
+	digitalWrite(pin, LOW);
+	delayNanoseconds(50);
+	port->transfer(0x9f);  //0x9f - JEDEC register
+	for(uint8_t i = 0; i<9; i++) {
+		buf[i] = port->transfer(0);
+	}
+	//delayNanoseconds(50);
+	digitalWriteFast(pin, HIGH); // Chip deselect
+	port->endTransaction();
+
+	if (buf[0] == 0x7F) {
+		buf[0] = buf[6];
+		buf[1] = buf[7];
+		buf[2] = buf[8];
+	}
+	//Serial.printf("Flash ID: %02X %02X %02X\n", buf[0], buf[1], buf[2]);
+	const struct chipinfo *info = chip_lookup(buf );
+
+  return info->pn;
+}
 
 FLASHMEM
 bool LittleFS::quickFormat()
@@ -843,6 +885,20 @@ int LittleFS_QSPIFlash::wait(uint32_t microseconds)
 	//Serial.printf("  waited %u us\n", (unsigned int)usec);
 	return 0; // success
 }
+
+
+FLASHMEM
+const char * LittleFS_QSPIFlash::getPN(){
+	uint8_t buf[4] = {0, 0, 0, 0};
+
+	flexspi2_ip_read(8, 0x00800000, buf, 3);
+
+	//Serial.printf("Flash ID: %02X %02X %02X\n", buf[0], buf[1], buf[2]);
+	const struct chipinfo *info = chip_lookup(buf);
+
+  return info->pn;
+}
+
 
 #endif // __IMXRT1062__
 

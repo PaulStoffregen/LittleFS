@@ -413,6 +413,14 @@ public:
 	uint32_t formatUnused(uint32_t blockCnt, uint32_t blockStart) {
 		return 0;
 	}
+	FLASHMEM
+	const char * getPN() {
+#if defined(__IMXRT1062__)
+		return "EXTMEM";
+#else
+		return "MEMORY";
+#endif
+	}
 private:
 	static int static_read(const struct lfs_config *c, lfs_block_t block,
 	  lfs_off_t offset, void *buffer, lfs_size_t size) {
@@ -570,6 +578,7 @@ class LittleFS_Program : public LittleFS
 public:
 	LittleFS_Program() { }
 	bool begin(uint32_t size);
+	const char * getPN() { return "PROGRAM"; }
 private:
 	static int static_read(const struct lfs_config *c, lfs_block_t block,
 	  lfs_off_t offset, void *buffer, lfs_size_t size);
@@ -586,6 +595,7 @@ class LittleFS_Program : public LittleFS
 public:
 	LittleFS_Program() { }
 	bool begin(uint32_t size) { return false; }
+	const char * getPN() { return "PROGRAM"; }
 };
 #endif
 

@@ -246,6 +246,9 @@ public:
 		if(type == 1) { return lowLevelFormat(progressChar, &pr); }
 		return true;
 	}
+	
+	virtual const char * getPN() {return (const char*)F("");}
+
 	bool quickFormat();
 	bool lowLevelFormat(char progressChar=0, Print* pr=&Serial);
 	uint32_t formatUnused(uint32_t blockCnt, uint32_t blockStart);
@@ -416,10 +419,10 @@ public:
 	FLASHMEM
 	const char * getPN() {
 #if defined(__IMXRT1062__)
-		return "EXTMEM";
-#else
-		return "MEMORY";
+		if ((uint32_t)config.context >= 0x70000000) return (const char *)F("EXTMEM");
+		if ((uint32_t)config.context >= 0x20200000) return (const char *)F("DMAMEM");
 #endif
+		return (const char *)F("MEMORY");
 	}
 private:
 	static int static_read(const struct lfs_config *c, lfs_block_t block,
@@ -578,7 +581,7 @@ class LittleFS_Program : public LittleFS
 public:
 	LittleFS_Program() { }
 	bool begin(uint32_t size);
-	const char * getPN() { return "PROGRAM"; }
+	const char * getPN() { return (const char *)F("PROGRAM"); }
 private:
 	static int static_read(const struct lfs_config *c, lfs_block_t block,
 	  lfs_off_t offset, void *buffer, lfs_size_t size);
@@ -595,7 +598,7 @@ class LittleFS_Program : public LittleFS
 public:
 	LittleFS_Program() { }
 	bool begin(uint32_t size) { return false; }
-	const char * getPN() { return "PROGRAM"; }
+	const char * getPN() { return (const char *)F("PROGRAM"); }
 };
 #endif
 
@@ -745,6 +748,8 @@ public:
   bool begin(uint8_t cspin=0xff, SPIClass &spiport=SPI);
   inline LittleFS * fs() { return (pfs == &fsnone)? nullptr : (LittleFS*)pfs ;}
   inline const char * displayName() {return display_name;}
+  inline const char * getPN() {return (pfs == &fsnone)? (const char *)F("") : ((LittleFS*)pfs)->getPN();}
+
   // You have full access to internals.
   uint8_t csPin_;
   LittleFS_SPIFlash flash;
@@ -779,6 +784,7 @@ public:
   bool begin();
   inline LittleFS * fs() { return (pfs == &fsnone)? nullptr : (LittleFS*)pfs ;}
   inline const char * displayName() {return display_name;}
+  inline const char * getPN() {return (pfs == &fsnone)? (const char *)F("") : ((LittleFS*)pfs)->getPN();}
   // You have full access to internals.
   uint8_t csPin;
   LittleFS_QSPIFlash flash;

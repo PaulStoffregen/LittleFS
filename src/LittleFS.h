@@ -246,6 +246,9 @@ public:
 		if(type == 1) { return lowLevelFormat(progressChar, &pr); }
 		return true;
 	}
+	
+	virtual const char * getPN() {return (const char*)F("");}
+
 	bool quickFormat();
 	bool lowLevelFormat(char progressChar=0, Print* pr=&Serial);
 	uint32_t formatUnused(uint32_t blockCnt, uint32_t blockStart);
@@ -413,6 +416,18 @@ public:
 	uint32_t formatUnused(uint32_t blockCnt, uint32_t blockStart) {
 		return 0;
 	}
+	FLASHMEM
+	const char * getPN() {
+		PROGMEM static const char ram_pn_name[] = "MEMORY";
+#if defined(__IMXRT1062__)
+		PROGMEM static const char ext_pn_name[] = "EXTMEM";
+		PROGMEM static const char dma_pn_name[] = "DMAMEM";
+
+		if ((uint32_t)config.context >= 0x70000000) return ext_pn_name;
+		if ((uint32_t)config.context >= 0x20200000) return dma_pn_name;
+#endif
+		return ram_pn_name;
+	}
 private:
 	static int static_read(const struct lfs_config *c, lfs_block_t block,
 	  lfs_off_t offset, void *buffer, lfs_size_t size) {
@@ -446,6 +461,7 @@ public:
 		port = nullptr;
 	}
 	bool begin(uint8_t cspin, SPIClass &spiport=SPI);
+	const char * getPN();
 private:
 	int read(lfs_block_t block, lfs_off_t offset, void *buf, lfs_size_t size);
 	int prog(lfs_block_t block, lfs_off_t offset, const void *buf, lfs_size_t size);
@@ -485,6 +501,7 @@ public:
 		port = nullptr;
 	}
 	bool begin(uint8_t cspin, SPIClass &spiport=SPI);
+	const char * getPN();
 private:
 	int read(lfs_block_t block, lfs_off_t offset, void *buf, lfs_size_t size);
 	int prog(lfs_block_t block, lfs_off_t offset, const void *buf, lfs_size_t size);
@@ -524,6 +541,7 @@ class LittleFS_QSPIFlash : public LittleFS
 public:
 	LittleFS_QSPIFlash() { }
 	bool begin();
+	const char * getPN();
 private:
 	int read(lfs_block_t block, lfs_off_t offset, void *buf, lfs_size_t size);
 	int prog(lfs_block_t block, lfs_off_t offset, const void *buf, lfs_size_t size);
@@ -567,6 +585,10 @@ class LittleFS_Program : public LittleFS
 public:
 	LittleFS_Program() { }
 	bool begin(uint32_t size);
+	const char * getPN() { 
+		PROGMEM static const char pn_name[] = "PROGRAM";
+		return pn_name; 
+	}
 private:
 	static int static_read(const struct lfs_config *c, lfs_block_t block,
 	  lfs_off_t offset, void *buffer, lfs_size_t size);
@@ -583,6 +605,7 @@ class LittleFS_Program : public LittleFS
 public:
 	LittleFS_Program() { }
 	bool begin(uint32_t size) { return false; }
+	const char * getPN() { return (const char *)F("PROGRAM"); }
 };
 #endif
 
@@ -597,7 +620,7 @@ public:
 	void readBBLUT(uint16_t *LBA, uint16_t *PBA, uint8_t *linkStatus);
 	bool lowLevelFormat(char progressChar, Print* pr=&Serial);
 	uint8_t addBBLUT(uint32_t block_address);  //temporary for testing
-  
+    const char * getPN();
 private:
 	int read(lfs_block_t block, lfs_off_t offset, void *buf, lfs_size_t size);
 	int prog(lfs_block_t block, lfs_off_t offset, const void *buf, lfs_size_t size);
@@ -660,7 +683,7 @@ public:
 	void readBBLUT(uint16_t *LBA, uint16_t *PBA, uint8_t *linkStatus);
 	bool lowLevelFormat(char progressChar);
 	uint8_t addBBLUT(uint32_t block_address);  //temporary for testing
-	
+	const char * getPN();
 private:
 	int read(lfs_block_t block, lfs_off_t offset, void *buf, lfs_size_t size);
 	int prog(lfs_block_t block, lfs_off_t offset, const void *buf, lfs_size_t size);
@@ -732,6 +755,8 @@ public:
   bool begin(uint8_t cspin=0xff, SPIClass &spiport=SPI);
   inline LittleFS * fs() { return (pfs == &fsnone)? nullptr : (LittleFS*)pfs ;}
   inline const char * displayName() {return display_name;}
+  inline const char * getPN() {return (pfs == &fsnone)? (const char *)F("") : ((LittleFS*)pfs)->getPN();}
+
   // You have full access to internals.
   uint8_t csPin_;
   LittleFS_SPIFlash flash;
@@ -766,6 +791,7 @@ public:
   bool begin();
   inline LittleFS * fs() { return (pfs == &fsnone)? nullptr : (LittleFS*)pfs ;}
   inline const char * displayName() {return display_name;}
+  inline const char * getPN() {return (pfs == &fsnone)? (const char *)F("") : ((LittleFS*)pfs)->getPN();}
   // You have full access to internals.
   uint8_t csPin;
   LittleFS_QSPIFlash flash;

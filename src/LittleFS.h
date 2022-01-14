@@ -418,11 +418,15 @@ public:
 	}
 	FLASHMEM
 	const char * getPN() {
+		PROGMEM static const char ram_pn_name[] = "MEMORY";
 #if defined(__IMXRT1062__)
-		if ((uint32_t)config.context >= 0x70000000) return (const char *)F("EXTMEM");
-		if ((uint32_t)config.context >= 0x20200000) return (const char *)F("DMAMEM");
+		PROGMEM static const char ext_pn_name[] = "EXTMEM";
+		PROGMEM static const char dma_pn_name[] = "DMAMEM";
+
+		if ((uint32_t)config.context >= 0x70000000) return ext_pn_name;
+		if ((uint32_t)config.context >= 0x20200000) return dma_pn_name;
 #endif
-		return (const char *)F("MEMORY");
+		return ram_pn_name;
 	}
 private:
 	static int static_read(const struct lfs_config *c, lfs_block_t block,
@@ -581,7 +585,10 @@ class LittleFS_Program : public LittleFS
 public:
 	LittleFS_Program() { }
 	bool begin(uint32_t size);
-	const char * getPN() { return (const char *)F("PROGRAM"); }
+	const char * getPN() { 
+		PROGMEM static const char pn_name[] = "PROGRAM";
+		return pn_name; 
+	}
 private:
 	static int static_read(const struct lfs_config *c, lfs_block_t block,
 	  lfs_off_t offset, void *buffer, lfs_size_t size);

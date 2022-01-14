@@ -62,7 +62,7 @@
 
 
 
-#define SPICONFIG_NAND   SPISettings(45000000, MSBFIRST, SPI_MODE0)
+#define SPICONFIG_NAND   SPISettings(30000000, MSBFIRST, SPI_MODE0)
 
 
 PROGMEM static const struct chipinfo {

@@ -776,7 +776,7 @@ bool LittleFS_SPINAND::lowLevelFormat(char progressChar, Print* pr)
 }
 
 
-const char * LittleFS_SPINAND::getPN(){
+const char * LittleFS_SPINAND::getMediaName(){
   const uint8_t cmd_buf[5] = {0x9F, 0, 0, 0, 0};
   uint8_t buf[5];
   
@@ -1515,7 +1515,7 @@ bool LittleFS_QPINAND::lowLevelFormat(char progressChar)
 	return val;
 }
 
-const char * LittleFS_QPINAND::getPN(){
+const char * LittleFS_QPINAND::getMediaName(){
   uint8_t buf[5] = {0, 0, 0, 0, 0};
   flexspi2_ip_read(8, 0x00800000, buf, 4);
   const struct chipinfo *info = chip_lookup(buf+1);

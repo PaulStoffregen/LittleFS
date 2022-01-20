@@ -76,6 +76,19 @@ static const struct chipinfo * chip_lookup(const uint8_t *id)
 	return nullptr;
 }
 
+
+const char * LittleFS_RAM::getMediaName() {
+	PROGMEM static const char ram_pn_name[] = "MEMORY";
+#if defined(__IMXRT1062__)
+	PROGMEM static const char ext_pn_name[] = "EXTMEM";
+	PROGMEM static const char dma_pn_name[] = "DMAMEM";
+
+	if ((uint32_t)config.context >= 0x70000000) return ext_pn_name;
+	if ((uint32_t)config.context >= 0x20200000) return dma_pn_name;
+#endif
+	return ram_pn_name;
+}
+
 FLASHMEM
 bool LittleFS_SPIFlash::begin(uint8_t cspin, SPIClass &spiport)
 {
@@ -143,7 +156,7 @@ bool LittleFS_SPIFlash::begin(uint8_t cspin, SPIClass &spiport)
 }
 
 FLASHMEM
-const char * LittleFS_SPIFlash::getPN(){
+const char * LittleFS_SPIFlash::getMediaName(){
   const uint8_t cmd_buf[4] = {0x9F, 0, 0, 0};
   uint8_t buf[5];
   port->beginTransaction(SPICONFIG);
@@ -234,7 +247,7 @@ bool LittleFS_SPIFram::begin(uint8_t cspin, SPIClass &spiport)
 }
 
 FLASHMEM
-const char * LittleFS_SPIFram::getPN(){
+const char * LittleFS_SPIFram::getMediaName(){
 	uint8_t buf[9];
 	
 	port->beginTransaction(SPICONFIG);
@@ -888,7 +901,7 @@ int LittleFS_QSPIFlash::wait(uint32_t microseconds)
 
 
 FLASHMEM
-const char * LittleFS_QSPIFlash::getPN(){
+const char * LittleFS_QSPIFlash::getMediaName(){
 	uint8_t buf[4] = {0, 0, 0, 0};
 
 	flexspi2_ip_read(8, 0x00800000, buf, 3);
@@ -984,6 +997,11 @@ int LittleFS_Program::static_read(const struct lfs_config *c, lfs_block_t block,
 	const uint8_t *p = (uint8_t *)(baseaddr + block * SECTOR_SIZE + offset);
 	memcpy(buffer, p, size);
 	return 0;
+}
+
+const char * LittleFS_Program::getMediaName() { 
+	PROGMEM static const char prog_pn_name[] = "PROGRAM";
+	return prog_pn_name; 
 }
 
 // from eeprom.c

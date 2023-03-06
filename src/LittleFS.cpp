@@ -548,7 +548,7 @@ int LittleFS_SPIFram::prog(lfs_block_t block, lfs_off_t offset, const void *buf,
 	port->beginTransaction(SPICONFIG);
 	digitalWrite(pin,LOW);  //chip select
 	delayNanoseconds(50);
-	SPI.transfer(0x06);    //transmit write enable opcode
+	port->transfer(0x06);    //transmit write enable opcode
 	digitalWrite(pin,HIGH); //release chip, signal end transfer
 	delayNanoseconds(50);
 	// F-RAM WRITE OPERATION

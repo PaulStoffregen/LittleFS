@@ -584,7 +584,7 @@ int LittleFS_SPIFram::erase(lfs_block_t block)
 	// F-RAM WRITE ENABLE COMMAND
 	port->beginTransaction(SPICONFIG);
 	digitalWrite(pin,LOW);  //chip select
-	SPI.transfer(0x06);    //transmit write enable opcode
+	port->transfer(0x06);    //transmit write enable opcode
 	digitalWrite(pin,HIGH); //release chip, signal end transfer
 	delayNanoseconds(50);
 	// F-RAM WRITE OPERATION

@@ -45,6 +45,8 @@ PROGMEM static const struct chipinfo {
 {{0xEF, 0x40, 0x19}, 32, 256, 65536, 0xDC, 33554432, 3000, 2000000, "W25Q256JV*Q"}, // Winbond W25Q256JV*Q
 {{0xEF, 0x40, 0x20}, 32, 256, 65536, 0xDC, 67108864, 3500, 2000000, "W25Q512JV*Q"}, // Winbond W25Q512JV*Q
 {{0xEF, 0x40, 0x21}, 32, 256, 65536, 0xDC, 134217728, 3500, 2000000, "W25Q01JV*Q"},// Winbond W25Q01JV*Q
+{{0x62, 0x06, 0x13}, 24, 256,  4096, 0x20, 524288, 5000, 300000, "SST25PF040C"},  // Microchip SST25PF040C
+//{{0xEF, 0x40, 0x14}, 24, 256,  4096, 0x20, 1048576, 5000, 300000, "W25Q80DV"},  // Winbond W25Q80DV  not tested
 {{0xEF, 0x70, 0x17}, 24, 256, 65536, 0xD8, 8388608, 3000, 2000000, "W25Q64JV*M (DTR)"},  // Winbond W25Q64JV*M (DTR)
 {{0xEF, 0x70, 0x18}, 24, 256, 65536, 0xD8, 16777216, 3000, 2000000, "W25Q128JV*M (DTR)"}, // Winbond W25Q128JV*M (DTR)
 {{0xEF, 0x70, 0x19}, 32, 256, 65536, 0xDC, 33554432, 3000, 2000000, "W25Q256JV*M (DTR)"}, // Winbond W25Q256JV*M (DTR)
@@ -546,7 +548,7 @@ int LittleFS_SPIFram::prog(lfs_block_t block, lfs_off_t offset, const void *buf,
 	port->beginTransaction(SPICONFIG);
 	digitalWrite(pin,LOW);  //chip select
 	delayNanoseconds(50);
-	SPI.transfer(0x06);    //transmit write enable opcode
+	port->transfer(0x06);    //transmit write enable opcode
 	digitalWrite(pin,HIGH); //release chip, signal end transfer
 	delayNanoseconds(50);
 	// F-RAM WRITE OPERATION
@@ -582,7 +584,7 @@ int LittleFS_SPIFram::erase(lfs_block_t block)
 	// F-RAM WRITE ENABLE COMMAND
 	port->beginTransaction(SPICONFIG);
 	digitalWrite(pin,LOW);  //chip select
-	SPI.transfer(0x06);    //transmit write enable opcode
+	port->transfer(0x06);    //transmit write enable opcode
 	digitalWrite(pin,HIGH); //release chip, signal end transfer
 	delayNanoseconds(50);
 	// F-RAM WRITE OPERATION

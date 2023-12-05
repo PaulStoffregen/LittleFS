@@ -74,7 +74,7 @@ PROGMEM static const struct chipinfo {
 	uint32_t chipsize;	// total number of bytes in the chip
 	uint32_t progtime;	// maximum microseconds to wait for page programming
 	uint32_t erasetime;	// maximum microseconds to wait for sector erase
-	const char pn[14];		//flash name
+	const char pn[22];		//flash name
 } known_chips[] = {
 	//NAND
 	//{{0xEF, 0xAA, 0x21}, 24, 2048, 131072, 134217728,   2000, 15000},  //Winbond W25N01G

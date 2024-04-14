@@ -1517,6 +1517,8 @@ bool LittleFS_QPINAND::lowLevelFormat(char progressChar)
 
 const char * LittleFS_QPINAND::getMediaName(){
   uint8_t buf[5] = {0, 0, 0, 0, 0};
+	FLEXSPI2_LUT32 = LUT0(CMD_SDR, PINS1, 0x9F) | LUT1(READ_SDR, PINS1, 1);
+	FLEXSPI2_LUT33 = 0;
   flexspi2_ip_read(8, 0x00800000, buf, 4);
   const struct chipinfo *info = chip_lookup(buf+1);
 

@@ -63,9 +63,9 @@ LittleFS_Program myfs;
 
 In setup space is allocated int program memory by specifing space in the begin statement:
 ```cpp
- if (!myfs.begin(1024 * 1024 * 6)))) {
-    Serial.printf("Error starting %s\n", "RAM DISK);
-  } 
+ if (!myfs.begin(1024 * 1024 * 6)) {
+    Serial.printf("Error starting %s\n", "Program flash DISK");
+  }
 ```
 
 ### RAM Disk

@@ -70,6 +70,7 @@ PROGMEM static const struct chipinfo {
 {{0x60, 0x2A, 0xC2}, 24, 64, 128, 0, 262144, 250, 1200, "CY15B102Q"},  //Cypress 2Mb FRAM, CY15B102Q
 {{0x60, 0x2A, 0xC2}, 24, 64, 128, 0, 262144, 250, 1200, "CY15B102Q"},  //Cypress 2Mb FRAM, CY15B102Q
 {{0x04, 0x7F, 0x48}, 24, 64, 128, 0, 262144, 250, 1200, "MB85RS2MTAPNF"},  //Fujitsu 2Mb FRAM, MB85RS2MTAPNF
+{{0x04, 0x7F, 0x49}, 24, 64, 128, 0, 524288, 250, 1200, "MB85RS4MT"},  //Fujitsu 4Mb FRAM, MB85RS2MT
 
 };
 
@@ -235,17 +236,17 @@ bool LittleFS_SPIFram::begin(uint8_t cspin, SPIClass &spiport)
 	erasetime = info->erasetime;
 	configured = true;
 
-	Serial.println("attempting to mount existing media");
+	//Serial.println("attempting to mount existing media");
 	if (lfs_mount(&lfs, &config) < 0) {
-		Serial.println("couldn't mount media, attemping to format");
+		//Serial.println("couldn't mount media, attemping to format");
 		if (lfs_format(&lfs, &config) < 0) {
-			Serial.println("format failed :(");
+			//Serial.println("format failed :(");
 			port = nullptr;
 			return false;
 		}
-		Serial.println("attempting to mount freshly formatted media");
+		//Serial.println("attempting to mount freshly formatted media");
 		if (lfs_mount(&lfs, &config) < 0) {
-			Serial.println("mount after format failed :(");
+			//Serial.println("mount after format failed :(");
 			port = nullptr;
 			return false;
 		}

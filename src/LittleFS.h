@@ -248,6 +248,8 @@ public:
 	}
 	
 	virtual const char * getMediaName() {return (const char*)F("");}
+	virtual const char * name() { return getMediaName(); }
+	virtual bool mediaPresent() { return mounted; }
 
 	bool quickFormat();
 	bool lowLevelFormat(char progressChar=0, Print* pr=&Serial);

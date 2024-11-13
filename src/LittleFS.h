@@ -21,6 +21,7 @@
  */
 
 #pragma once
+#include <cerrno>
 #include <Arduino.h>
 #include <FS.h>
 #include <SPI.h>
@@ -73,8 +74,10 @@ public:
 		bool success = true;
 		uint32_t mdt = makeTime(tm);
 		int rcode = lfs_setattr(lfs, name(), 'c', (const void *) &mdt, sizeof(mdt));
-		if(rcode < 0)
+		if (rcode < 0) {
+			errno = -rcode;
 			success = false;
+		}
 		return success;
 	}
 	virtual bool setModifyTime(const DateTimeFields &tm) {
@@ -82,15 +85,22 @@ public:
 		bool success = true;
 		uint32_t mdt = makeTime(tm);
 		int rcode = lfs_setattr(lfs, name(), 'm', (const void *) &mdt, sizeof(mdt));
-		if(rcode < 0) 
+		if (rcode < 0) {
+			errno = -rcode
 			success = false;
+		}
 		return success;
 	}
 	virtual size_t write(const void *buf, size_t size) {
 		//Serial.println("write");
 		if (!file) return 0;
 		//Serial.println(" is regular file");
-		return lfs_file_write(lfs, file, buf, size);
+		lfs_ssize_t w = lfs_file_write(lfs, file, buf, size);
+		if (w < 0) {
+			errno = -w;
+			return 0;
+		}
+		return w;
 	}
 	virtual int peek() {
 		return -1; // TODO...
@@ -98,26 +108,45 @@ public:
 	virtual int available() {
 		if (!file) return 0;
 		lfs_soff_t pos = lfs_file_tell(lfs, file);
-		if (pos < 0) return 0;
+		if (pos < 0) {
+			errno = -pos;
+			return 0;
+		}
 		lfs_soff_t size = lfs_file_size(lfs, file);
-		if (size < 0) return 0;
+		if (size < 0) {
+			errno = -size;
+			return 0;
+		}
 		return size - pos;
 	}
 	virtual void flush() {
-		if (file) lfs_file_sync(lfs, file);
+		if (file) {
+			int err = lfs_file_sync(lfs, file);
+			if (err < 0) {
+				errno = -err;
+			}
+		}
 	}
 	virtual size_t read(void *buf, size_t nbyte) {
 		if (file) {
 			lfs_ssize_t r = lfs_file_read(lfs, file, buf, nbyte);
-			if (r < 0) r = 0;
+			if (r < 0) {
+				errno = -r;
+				r = 0;
+			}
 			return r;
 		}
 		return 0;
 	}
 	virtual bool truncate(uint64_t size=0) {
 		if (!file) return false;
-		if (lfs_file_truncate(lfs, file, size) >= 0) return true;
-		return false;
+		int err = lfs_file_truncate(lfs, file, size);
+		if (err < 0) {
+			errno = -err;
+			return false;
+		} else {
+			return true;
+		}
 	}
 	virtual bool seek(uint64_t pos, int mode = SeekSet) {
 		if (!file) return false;
@@ -126,31 +155,48 @@ public:
 		else if (mode == SeekCur) whence = LFS_SEEK_CUR;
 		else if (mode == SeekEnd) whence = LFS_SEEK_END;
 		else return false;
-		if (lfs_file_seek(lfs, file, pos, whence) >= 0) return true;
-		return false;
+		lfs_soff_t err = lfs_file_seek(lfs, file, pos, whence);
+		if (err < 0) {
+			errno = -err;
+			return false;
+		} else {
+			return true;
+		}
 	}
 	virtual uint64_t position() {
 		if (!file) return 0;
 		lfs_soff_t pos = lfs_file_tell(lfs, file);
-		if (pos < 0) pos = 0;
+		if (pos < 0) {
+			errno = -pos;
+			pos = 0;
+		}
 		return pos;
 	}
 	virtual uint64_t size() {
 		if (!file) return 0;
 		lfs_soff_t size = lfs_file_size(lfs, file);
-		if (size < 0) size = 0;
+		if (size < 0) {
+			errno = -size;
+			size = 0;
+		}
 		return size;
 	}
 	virtual void close() {
 		if (file) {
 			//Serial.printf("  close file, this=%x, lfs=%x", (int)this, (int)lfs);
-			lfs_file_close(lfs, file); // we get stuck here, but why?
+			int err = lfs_file_close(lfs, file); // we get stuck here, but why?
+			if (err < 0) {
+				errno = -err;
+			}
 			free(file);
 			file = nullptr;
 		}
 		if (dir) {
 			//Serial.printf("  close dir, this=%x, lfs=%x", (int)this, (int)lfs);
-			lfs_dir_close(lfs, dir);
+			int err = lfs_dir_close(lfs, dir);
+			if (err < 0) {
+				errno = -err;
+			}
 			free(dir);
 			dir = nullptr;
 		}
@@ -172,7 +218,13 @@ public:
 		struct lfs_info info;
 		do {
 			memset(&info, 0, sizeof(info)); // is this necessary?
-			if (lfs_dir_read(lfs, dir, &info) <= 0) return File();
+			int err = lfs_dir_read(lfs, dir, &info);
+			if (err <= 0) {
+				if (err < 0) {
+					errno = -err;
+				}
+				return File();
+			}
 		} while (strcmp(info.name, ".") == 0 || strcmp(info.name, "..") == 0);
 		//Serial.printf("ONF::  next name = \"%s\"\n", info.name);
 		char pathname[128];
@@ -187,23 +239,35 @@ public:
 		//Serial.print("ONF:: pathname --- "); Serial.println(pathname);
 		if (info.type == LFS_TYPE_REG) {
 			lfs_file_t *f = (lfs_file_t *)malloc(sizeof(lfs_file_t));
-			if (!f) return File();
-			if (lfs_file_open(lfs, f, pathname, LFS_O_RDONLY) >= 0) {
+			if (!f) {
+				errno = ENOMEM;
+				return File();
+			}
+			int err = lfs_file_open(lfs, f, pathname, LFS_O_RDONLY);
+			if (err >= 0) {
 				return File(new LittleFSFile(lfs, f, pathname));
 			}
+			errno = -err;
 			free(f);
 		} else { // LFS_TYPE_DIR
 			lfs_dir_t *d = (lfs_dir_t *)malloc(sizeof(lfs_dir_t));
 			if (!d) return File();
-			if (lfs_dir_open(lfs, d, pathname) >= 0) {
+			int err = lfs_dir_open(lfs, d, pathname);
+			if (err >= 0) {
 				return File(new LittleFSFile(lfs, d, pathname));
 			}
+			errno = -err;
 			free(d);
 		}
 		return File();
 	}
 	virtual void rewindDirectory(void) {
-		if (dir) lfs_dir_rewind(lfs, dir);
+		if (dir) {
+			int err = lfs_dir_rewind(lfs, dir);
+			if (err < 0) {
+				errno = -err;
+			}
+		}
 	}
 
 private:
@@ -216,15 +280,23 @@ private:
 	uint32_t getCreationTime() {
 		uint32_t filetime = 0;
 		int rc = lfs_getattr(lfs, fullpath, 'c', (void *)&filetime, sizeof(filetime));
-		if(rc != sizeof(filetime))
-			filetime = 0;   // Error so clear read value		
+		if (rc != sizeof(filetime)) {
+			if (rc < 0) {
+				errno = -rc;
+			}
+			filetime = 0;   // Error so clear read value
+		}
 		return filetime;
 	}
 	uint32_t getModifiedTime() {
 		uint32_t filetime = 0;
 		int rc = lfs_getattr(lfs, fullpath, 'm', (void *)&filetime, sizeof(filetime));
-		if(rc != sizeof(filetime)) 
-			filetime = 0;   // Error so clear read value	
+		if (rc != sizeof(filetime)) {
+			if (rc < 0) {
+				errno = -rc;
+			}
+			filetime = 0;   // Error so clear read value
+		}
 		return filetime;
 	}
 
@@ -260,78 +332,123 @@ public:
 		if (!mounted) return File();
 		if (mode == FILE_READ) {
 			struct lfs_info info;
-			if (lfs_stat(&lfs, filepath, &info) < 0) return File();
+			rcode = lfs_stat(&lfs, filepath, &info);
+			if (rcode < 0) {
+				errno = -rcode;
+				return File();
+			}
 			//Serial.printf("LittleFS open got info, name=%s\n", info.name);
 			if (info.type == LFS_TYPE_REG) {
 				lfs_file_t *file = (lfs_file_t *)malloc(sizeof(lfs_file_t));
 				if (!file) return File();
-				if (lfs_file_open(&lfs, file, filepath, LFS_O_RDONLY) >= 0) {
+				rcode = lfs_file_open(&lfs, file, filepath, LFS_O_RDONLY);
+				if (rcode >= 0) {
 					return File(new LittleFSFile(&lfs, file, filepath));
 				}
+				errno = -rcode;
 				free(file);
 			} else { // LFS_TYPE_DIR
 				lfs_dir_t *dir = (lfs_dir_t *)malloc(sizeof(lfs_dir_t));
-				if (!dir) return File();
-				if (lfs_dir_open(&lfs, dir, filepath) >= 0) {
+				if (!dir) {
+					errno = ENOMEM;
+					return File();
+				}
+				rcode = lfs_dir_open(&lfs, dir, filepath);
+				if (rcode >= 0) {
 					return File(new LittleFSFile(&lfs, dir, filepath));
 				}
+				errno = -rcode;
 				free(dir);
 			}
 		} else {
 			lfs_file_t *file = (lfs_file_t *)malloc(sizeof(lfs_file_t));
 			if (!file) return File();
-			if (lfs_file_open(&lfs, file, filepath, LFS_O_RDWR | LFS_O_CREAT) >= 0) {
+			rcode = lfs_file_open(&lfs, file, filepath, LFS_O_RDWR | LFS_O_CREAT);
+			if (rcode >= 0) {
 				//attributes get written when the file is closed
 				uint32_t filetime = 0;
 				uint32_t _now = Teensy3Clock.get();
 				rcode = lfs_getattr(&lfs, filepath, 'c', (void *)&filetime, sizeof(filetime));
 				if(rcode != sizeof(filetime)) {
+					if (rcode < 0) {
+						errno = -rcode;
+					}
 					rcode = lfs_setattr(&lfs, filepath, 'c', (const void *) &_now, sizeof(_now));
-					if(rcode < 0)
+					if(rcode < 0) {
+						errno = -rcode;
 						Serial.println("FO:: set attribute creation failed");
+					}
 				}
 				rcode = lfs_setattr(&lfs, filepath, 'm', (const void *) &_now, sizeof(_now));
-				if(rcode < 0)
+				if(rcode < 0) {
+					errno = -rcode;
 					Serial.println("FO:: set attribute modified failed");
+				}
 				if (mode == FILE_WRITE) {
-					lfs_file_seek(&lfs, file, 0, LFS_SEEK_END);
+					lfs_soff_t s = lfs_file_seek(&lfs, file, 0, LFS_SEEK_END);
+					if (s < 0) {
+						errno = -s;
+					}
 				} // else FILE_WRITE_BEGIN
 				return File(new LittleFSFile(&lfs, file, filepath));
 			}
+			errno = -rcode;
 		}
 		return File();
 	}
 	bool exists(const char *filepath) {
 		if (!mounted) return false;
 		struct lfs_info info;
-		if (lfs_stat(&lfs, filepath, &info) < 0) return false;
+		int err = lfs_stat(&lfs, filepath, &info);
+		if (err < 0) {
+			errno = -err;
+			return false;
+		}
 		return true;
 	}
 	bool mkdir(const char *filepath) {
 		int rcode;
 		if (!mounted) return false;
-		if (lfs_mkdir(&lfs, filepath) < 0) return false;
+		rcode = lfs_mkdir(&lfs, filepath);
+		if (rcode < 0) {
+			errno = -rcode;
+			return false;
+		}
 		uint32_t _now = Teensy3Clock.get();
 		rcode = lfs_setattr(&lfs, filepath, 'c', (const void *) &_now, sizeof(_now));
-		if(rcode < 0)
+		if(rcode < 0) {
+			errno = -rcode;
 			Serial.println("FD:: set attribute creation failed");
+		}
 		rcode = lfs_setattr(&lfs, filepath, 'm', (const void *) &_now, sizeof(_now));
-		if(rcode < 0)
+		if(rcode < 0) {
+			errno = -rcode;
 			Serial.println("FD:: set attribute modified failed");
+		}
 		return true;
 	}
 	bool rename(const char *oldfilepath, const char *newfilepath) {
 		if (!mounted) return false;
-		if (lfs_rename(&lfs, oldfilepath, newfilepath) < 0) return false;
+		int rcode = lfs_rename(&lfs, oldfilepath, newfilepath);
+		if (rcode < 0) {
+			errno = -rcode;
+			return false;
+		}
 		uint32_t _now = Teensy3Clock.get();
-		int rcode = lfs_setattr(&lfs, newfilepath, 'm', (const void *) &_now, sizeof(_now));
-		if(rcode < 0)
+		rcode = lfs_setattr(&lfs, newfilepath, 'm', (const void *) &_now, sizeof(_now));
+		if(rcode < 0) {
+			errno = -rcode;
 			Serial.println("FD:: set attribute modified failed");
+		}
 		return true;
 	}
 	bool remove(const char *filepath) {
 		if (!mounted) return false;
-		if (lfs_remove(&lfs, filepath) < 0) return false;
+		int err = lfs_remove(&lfs, filepath);
+		if (err < 0) {
+			errno = -err;
+			return false;
+		}
 		return true;
 	}
 	bool rmdir(const char *filepath) {
@@ -340,6 +457,9 @@ public:
 	uint64_t usedSize() {
 		if (!mounted) return 0;
 		int blocks = lfs_fs_size(&lfs);
+		if (blocks < 0) {
+			errno = -blocks;
+		}
 		if (blocks < 0 || (lfs_size_t)blocks > config.block_count) return totalSize();
 		return blocks * config.block_size;
 	}
@@ -407,9 +527,17 @@ public:
 		config.file_max = 0;
 		config.attr_max = 0;
 		configured = true;
-		if (lfs_format(&lfs, &config) < 0) return false;
+		int err = lfs_format(&lfs, &config);
+		if (err < 0) {
+			errno = -err;
+			return false;
+		}
 		//Serial.println("formatted");
-		if (lfs_mount(&lfs, &config) < 0) return false;
+		err = lfs_mount(&lfs, &config);
+		if (err < 0) {
+			errno = -err;
+			return false;
+		}
 		//Serial.println("mounted atfer format");
 		mounted = true;
 		return true;
@@ -796,4 +924,3 @@ private:
   char display_name[10];
 };
 #endif
-

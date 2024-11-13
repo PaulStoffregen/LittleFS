@@ -67,7 +67,6 @@
 
 PROGMEM static const struct chipinfo {
 	uint8_t id[3];
-	uint8_t addrbits;	// number of address bits, 24 or 32
 	uint16_t progsize;	// page size for programming, in bytes
 	uint32_t erasesize;	// sector size for erasing, in bytes
 	uint8_t  erasecmd;	// command to use for sector erase
@@ -77,13 +76,13 @@ PROGMEM static const struct chipinfo {
 	const char pn[22];		//flash name
 } known_chips[] = {
 	//NAND
-	//{{0xEF, 0xAA, 0x21}, 24, 2048, 131072, 134217728,   2000, 15000},  //Winbond W25N01G
+	//{{0xEF, 0xAA, 0x21}, 2048, 131072, 134217728,   2000, 15000},  //Winbond W25N01G
 	//Upper 24 blocks * 128KB/block will be used for bad block replacement area
 	//so reducing total chip size: 134217728 - 24*131072
-    {{0xEF, 0xAA, 0x21}, 24, 2048, 131072, 0, 131596288, 2000, 15000, "W25N01GVZEIG"},  //Winbond W25N01G
-	//{{0xEF, 0xAA, 0x22}, 24, 2048, 131072, 134217728*2, 2000, 15000},  //Winbond W25N02G
-	{{0xEF, 0xAA, 0x22}, 24, 2048, 131072, 0, 265289728, 2000, 15000, "W25N02KVZEIR"},  //Winbond W25N02G
-    {{0xEF, 0xBB, 0x21}, 24, 2048, 131072, 0, 265289728, 2000, 15000, "W25M02"},  //Winbond W25M02
+    {{0xEF, 0xAA, 0x21}, 2048, 131072, 0, 131596288, 2000, 15000, "W25N01GVZEIG"},  //Winbond W25N01G
+	//{{0xEF, 0xAA, 0x22}, 2048, 131072, 134217728*2, 2000, 15000},  //Winbond W25N02G
+	{{0xEF, 0xAA, 0x22}, 2048, 131072, 0, 265289728, 2000, 15000, "W25N02KVZEIR"},  //Winbond W25N02G
+    {{0xEF, 0xBB, 0x21}, 2048, 131072, 0, 265289728, 2000, 15000, "W25M02"},  //Winbond W25M02
 };
 
 volatile uint32_t currentPage     = UINT32_MAX;
@@ -125,6 +124,7 @@ bool LittleFS_SPINAND::begin(uint8_t cspin, SPIClass &spiport)
 	//Serial.printf("Flash ID: %02X %02X %02X\n", buf[2], buf[3], buf[4]);
 	const struct chipinfo *info = chip_lookup(buf+2);
 	if (!info) return false;
+	hwinfo = (const void *)info;
 	//Serial.printf("Flash size is %.2f Mbyte\n", (float)info->chipsize / 1048576.0f);
 	
 	//capacityID = buf[3];   //W25N01G has 1 die, W25N02G had 2 dies
@@ -170,12 +170,7 @@ bool LittleFS_SPINAND::begin(uint8_t cspin, SPIClass &spiport)
 	config.cache_size = info->progsize;
 	config.lookahead_size = info->progsize;
 	config.name_max = LFS_NAME_MAX;
-	addrbits = info->addrbits;
-	progtime = info->progtime;
-	erasetime = info->erasetime;
 	configured = true;
-	blocksize = info->erasesize;
-	chipsize = info->chipsize;
 
 	//Serial.println("attempting to mount existing media");
 	if (lfs_mount(&lfs, &config) < 0) {
@@ -239,7 +234,7 @@ int LittleFS_SPINAND::read(lfs_block_t block, lfs_off_t offset, void *buf, lfs_s
 	} else {
 		loadPage(addr);
 	}
-	
+	const uint32_t progtime = ((const struct chipinfo *)hwinfo)->progtime;
 	wait(progtime);
 	
 	uint16_t column = LINEAR_TO_COLUMN(addr);
@@ -256,7 +251,6 @@ int LittleFS_SPINAND::read(lfs_block_t block, lfs_off_t offset, void *buf, lfs_s
 	port->transfer(buf, size);
     digitalWrite(pin, HIGH);
     port->endTransaction();
-
 	wait(progtime);
 
 	// Check ECC
@@ -319,6 +313,7 @@ int LittleFS_SPINAND::prog(lfs_block_t block, lfs_off_t offset, const void *buf,
 		if(pageAddress > pagesPerDie)
 			pageAddress -= pagesPerDie;		//W25M02 has 2 separate W25N01 dies addressed individually
 		cmd1[1] = 0;						//dummy block for write is 0.
+		const uint32_t progtime = ((const struct chipinfo *)hwinfo)->progtime;
 		wait(progtime);
 	} 
 	
@@ -336,6 +331,7 @@ int LittleFS_SPINAND::prog(lfs_block_t block, lfs_off_t offset, const void *buf,
 	digitalWrite(pin, HIGH);
 	port->endTransaction();
 
+	const uint32_t progtime = ((const struct chipinfo *)hwinfo)->progtime;
 	wait(progtime);
 	//uint8_t status = readStatusRegister(0xA0, false );  //0xA0 - status register
 	//if ((status &  (1 << 3)) == 1)   //Status Program Fail
@@ -371,6 +367,7 @@ int LittleFS_SPINAND::erase(lfs_block_t block)
 	}
 
 	eraseSector(addr);
+	const uint32_t erasetime = ((const struct chipinfo *)hwinfo)->erasetime;
 	return 	wait(erasetime);
 }
  
@@ -408,6 +405,7 @@ int LittleFS_SPINAND::wait(uint32_t microseconds)
     port->transfer(0x06);  //Write Enable 0x06
     digitalWrite(pin, HIGH);
     port->endTransaction();
+	const uint32_t progtime = ((const struct chipinfo *)hwinfo)->progtime;
     wait(progtime);
 	
   status = readStatusRegister(0xC0, false);
@@ -447,7 +445,7 @@ void LittleFS_SPINAND::eraseSector(uint32_t address)
 		if(pageAddr > pagesPerDie)
 			pageAddr -= pagesPerDie;		//W25M02 has 2 separate W25N01 dies addressed individually
 		cmd[1] = 0;						//dummy block for write is 0.
-		
+		const uint32_t progtime = ((const struct chipinfo *)hwinfo)->progtime;
 		wait(progtime);
 	} 
 
@@ -532,6 +530,7 @@ void LittleFS_SPINAND::loadPage(uint32_t address)
 		if(targetPage > pagesPerDie)
 			targetPage -= pagesPerDie;		//W25M02 has 2 separate W25N01 dies addressed individually
 		cmd[1] = 0;						//dummy block for write is 0.
+		const uint32_t progtime = ((const struct chipinfo *)hwinfo)->progtime;
 		wait(progtime);		
 	} 
 
@@ -588,6 +587,7 @@ uint8_t LittleFS_SPINAND::readECC(uint32_t targetPage, uint8_t *data, int length
     digitalWrite(pin, HIGH);
     port->endTransaction();
 
+	const uint32_t progtime = ((const struct chipinfo *)hwinfo)->progtime;
 	wait(progtime);
 	
 	uint8_t cmd1[4];
@@ -719,6 +719,8 @@ uint8_t LittleFS_SPINAND::addBBLUT(uint32_t block_address)
 	
 	uint16_t pba, lba;
 	pba = block_address;
+	const uint32_t blocksize = ((const struct chipinfo *)hwinfo)->erasesize;
+	const uint32_t chipsize = ((const struct chipinfo *)hwinfo)->chipsize;
 	lba = LINEAR_TO_BLOCK((firstOpenEntry+1)*blocksize + chipsize);
 	Serial.printf("PBA: %d, LBA: %d\n", pba, lba);
 	
@@ -734,6 +736,7 @@ uint8_t LittleFS_SPINAND::addBBLUT(uint32_t block_address)
     //digitalWrite(pin, HIGH);
     //port->endTransaction();
 	#endif
+	const uint32_t progtime = ((const struct chipinfo *)hwinfo)->progtime;
 	wait(progtime);
 	
   }
@@ -776,19 +779,9 @@ bool LittleFS_SPINAND::lowLevelFormat(char progressChar, Print* pr)
 }
 
 
-const char * LittleFS_SPINAND::getMediaName(){
-  const uint8_t cmd_buf[5] = {0x9F, 0, 0, 0, 0};
-  uint8_t buf[5];
-  
-  SPI.beginTransaction(SPICONFIG_NAND);
-  digitalWrite(pin, LOW);
-  SPI.transfer(cmd_buf, buf, 5);
-  digitalWrite(pin, HIGH);
-  SPI.endTransaction();
-
-  const struct chipinfo *info = chip_lookup(buf+2);
-
-  return info->pn;
+const char * LittleFS_SPINAND::getMediaName() {
+	if (!hwinfo) return nullptr; 
+	return ((const struct chipinfo *)hwinfo)->pn;
 }
 
 
@@ -951,6 +944,7 @@ bool LittleFS_QPINAND::begin() {
 	//Serial.printf("Flash ID: %02X %02X %02X\n", buf[1], buf[2], buf[3]);
 	const struct chipinfo *info = chip_lookup(buf+1);
 	if (!info) return false;
+	hwinfo = info;
 	//Serial.printf("Flash size is %.2f Mbyte\n", (float)info->chipsize / 1048576.0f);
 	
 	// configure FlexSPI2 for chip's size
@@ -989,12 +983,7 @@ bool LittleFS_QPINAND::begin() {
 	config.cache_size = info->progsize;
 	config.lookahead_size = info->progsize;
 	config.name_max = LFS_NAME_MAX;
-	addrbits = info->addrbits;
-	progtime = info->progtime;
-	erasetime = info->erasetime;
 	configured = true;
-	blocksize = info->erasesize;
-	chipsize = info->chipsize;
 	
   // cmd index 8 = read Status register
   // set in function readStatusRegister(uint8_t reg, bool dump)
@@ -1089,6 +1078,7 @@ int LittleFS_QPINAND::read(lfs_block_t block, lfs_off_t offset, void *buf, lfs_s
 	
 	
     flexspi2_ip_command(12, 0x00800000 + newTargetPage);   // Page data read Lut
+	const uint32_t progtime = ((const struct chipinfo *)hwinfo)->progtime;
 	wait(progtime);
 
     currentPageRead = targetPage;
@@ -1148,6 +1138,7 @@ int LittleFS_QPINAND::prog(lfs_block_t block, lfs_off_t offset, const void *buf,
 		// die select 0xc2
 		FLEXSPI2_LUT44 = LUT0(CMD_SDR, PINS1, 0xC2) | LUT1(WRITE_SDR, PINS1, 1); 
 		flexspi2_ip_write(11, 0x00800000, &val, 1);
+		const uint32_t progtime = ((const struct chipinfo *)hwinfo)->progtime;
 		wait(progtime);
 	} else {
 		if(pageAddress > pagesPerDie ) {
@@ -1164,6 +1155,7 @@ int LittleFS_QPINAND::prog(lfs_block_t block, lfs_off_t offset, const void *buf,
 	FLEXSPI2_LUT52 = LUT0(CMD_SDR, PINS1, 0x32) | LUT1(CADDR_SDR, PINS1, 0x10);
 	FLEXSPI2_LUT53 = LUT0(WRITE_SDR, PINS4, 1);
 	flexspi2_ip_write(13, 0x00800000 + columnAddress, buf, size);
+	const uint32_t progtime = ((const struct chipinfo *)hwinfo)->progtime;
 	wait(progtime);
 
 	//uint8_t status = readStatusRegister(0xC0, false );  //Status Register
@@ -1192,6 +1184,7 @@ int LittleFS_QPINAND::erase(lfs_block_t block)
 	}
 	
 	eraseSector(addr);
+	const uint32_t erasetime = ((const struct chipinfo *)hwinfo)->erasetime;
 	wait(erasetime);
 	return 0;
 }
@@ -1261,6 +1254,7 @@ bool LittleFS_QPINAND::writeEnable()
   FLEXSPI2_LUT44 = LUT0(CMD_SDR, PINS1, 0x06);  //Write enable 0x06
   flexspi2_ip_command(11, 0x00800000); //Write Enable
   // Assume that we're about to do some writing, so the device is just about to become busy
+  const uint32_t progtime = ((const struct chipinfo *)hwinfo)->progtime;
   wait(progtime);
   
   status = readStatusRegister(0xC0, false);
@@ -1295,6 +1289,7 @@ void LittleFS_QPINAND::eraseSector(uint32_t address)
 		// die select 0xc2
 		FLEXSPI2_LUT44 = LUT0(CMD_SDR, PINS1, 0xC2) | LUT1(WRITE_SDR, PINS1, 1); 
 		flexspi2_ip_write(11, 0x00800000, &val, 1);
+		const uint32_t progtime = ((const struct chipinfo *)hwinfo)->progtime;
 		wait(progtime);
 	} else {
 		if(pageAddr > pagesPerDie ) {
@@ -1353,6 +1348,7 @@ uint8_t LittleFS_QPINAND::readECC(uint32_t targetPage, uint8_t *buf, int size)
 	
 	
     flexspi2_ip_command(12, 0x00800000 + newTargetPage);   // Page data read Lut
+	const uint32_t progtime = ((const struct chipinfo *)hwinfo)->progtime;
 	wait(progtime);
 
     currentPageRead = targetPage;
@@ -1465,6 +1461,8 @@ uint8_t LittleFS_QPINAND::addBBLUT(uint32_t block_address)
 	//Write BBLUT with next sequential block
 	uint16_t pba, lba;
 	pba = block_address;
+	const uint32_t blocksize = ((const struct chipinfo *)hwinfo)->erasesize;
+	const uint32_t chipsize = ((const struct chipinfo *)hwinfo)->chipsize;
 	//lba = LINEAR_TO_BLOCK((firstOpenEntry+1)*config.block_size);
 	lba = LINEAR_TO_BLOCK((firstOpenEntry+1)*blocksize + chipsize);
 	Serial.printf("PBA: %d, LBA: %d\n", pba, lba);
@@ -1478,6 +1476,7 @@ uint8_t LittleFS_QPINAND::addBBLUT(uint32_t block_address)
    //FLEXSPI2_LUT44 = LUT0(CMD_SDR, PINS1, 0xA1) | LUT0(WRITE_SDR, PINS1, 1);  
    //flexspi2_ip_write(8, 0x00800000, cmd, 4);
 	#endif	
+	const uint32_t progtime = ((const struct chipinfo *)hwinfo)->progtime;
 	wait(progtime);
   }
 	return 0;
@@ -1515,13 +1514,8 @@ bool LittleFS_QPINAND::lowLevelFormat(char progressChar)
 	return val;
 }
 
-const char * LittleFS_QPINAND::getMediaName(){
-  uint8_t buf[5] = {0, 0, 0, 0, 0};
-	FLEXSPI2_LUT32 = LUT0(CMD_SDR, PINS1, 0x9F) | LUT1(READ_SDR, PINS1, 1);
-	FLEXSPI2_LUT33 = 0;
-  flexspi2_ip_read(8, 0x00800000, buf, 4);
-  const struct chipinfo *info = chip_lookup(buf+1);
-
-  return info->pn;
+const char * LittleFS_QPINAND::getMediaName() {
+	if (!hwinfo) return nullptr; 
+	return ((const struct chipinfo *)hwinfo)->pn;
 }
 #endif // __IMXRT1062__

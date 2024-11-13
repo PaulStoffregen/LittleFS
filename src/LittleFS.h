@@ -420,6 +420,7 @@ public:
 	}
 	FLASHMEM
 	const char * getMediaName();
+	const char * name() { return getMediaName(); }
 
 private:
 	static int static_read(const struct lfs_config *c, lfs_block_t block,
@@ -452,9 +453,11 @@ class LittleFS_SPIFlash : public LittleFS
 public:
 	LittleFS_SPIFlash() {
 		port = nullptr;
+		hwinfo = nullptr;
 	}
 	bool begin(uint8_t cspin, SPIClass &spiport=SPI);
 	const char * getMediaName();
+	const char * name() { return getMediaName(); }
 private:
 	int read(lfs_block_t block, lfs_off_t offset, void *buf, lfs_size_t size);
 	int prog(lfs_block_t block, lfs_off_t offset, const void *buf, lfs_size_t size);
@@ -479,10 +482,7 @@ private:
 	}
 	SPIClass *port;
 	uint8_t pin;
-	uint8_t addrbits;
-	uint8_t erasecmd;
-	uint32_t progtime;
-	uint32_t erasetime;
+	const void *hwinfo;
 };
 
 
@@ -490,11 +490,13 @@ private:
 class LittleFS_SPIFram : public LittleFS
 {
 public:
-	LittleFS_SPIFram() {
-		port = nullptr;
-	}
+	LittleFS_SPIFram() : port(nullptr), hwinfo(nullptr) { }
+		//port = nullptr;
+		//hwinfo = nullptr;
+	//}
 	bool begin(uint8_t cspin, SPIClass &spiport=SPI);
 	const char * getMediaName();
+	const char * name() { return getMediaName(); }
 private:
 	int read(lfs_block_t block, lfs_off_t offset, void *buf, lfs_size_t size);
 	int prog(lfs_block_t block, lfs_off_t offset, const void *buf, lfs_size_t size);
@@ -517,14 +519,9 @@ private:
 	static int static_sync(const struct lfs_config *c) {
 		return 0;
 	}
-	
-	
-	
 	SPIClass *port;
 	uint8_t pin;
-	uint8_t addrbits;
-	uint32_t progtime;
-	uint32_t erasetime;
+	const void *hwinfo;
 };
 
 
@@ -532,9 +529,10 @@ private:
 class LittleFS_QSPIFlash : public LittleFS
 {
 public:
-	LittleFS_QSPIFlash() { }
+	LittleFS_QSPIFlash() : hwinfo(nullptr) { }
 	bool begin();
 	const char * getMediaName();
+	const char * name() { return getMediaName(); }
 private:
 	int read(lfs_block_t block, lfs_off_t offset, void *buf, lfs_size_t size);
 	int prog(lfs_block_t block, lfs_off_t offset, const void *buf, lfs_size_t size);
@@ -557,9 +555,7 @@ private:
 	static int static_sync(const struct lfs_config *c) {
 		return 0;
 	}
-	uint8_t addrbits;
-	uint32_t progtime;
-	uint32_t erasetime;
+	const void *hwinfo;
 };
 #else
 class LittleFS_QSPIFlash : public LittleFS
@@ -579,6 +575,7 @@ public:
 	LittleFS_Program() { }
 	bool begin(uint32_t size);
 	const char * getMediaName();
+	const char * name() { return getMediaName(); }
 private:
 	static int static_read(const struct lfs_config *c, lfs_block_t block,
 	  lfs_off_t offset, void *buffer, lfs_size_t size);
@@ -596,21 +593,21 @@ public:
 	LittleFS_Program() { }
 	bool begin(uint32_t size) { return false; }
 	const char * getMediaName() { return (const char *)F("PROGRAM"); }
+	const char * name() { return getMediaName(); }
 };
 #endif
 
 class LittleFS_SPINAND : public LittleFS
 {
 public:
-	LittleFS_SPINAND() {
-		port = nullptr;
-	}
+	LittleFS_SPINAND() : port(nullptr), hwinfo(nullptr) { }
 	bool begin(uint8_t cspin, SPIClass &spiport=SPI);
 	uint8_t readECC(uint32_t address, uint8_t *data, int length);
 	void readBBLUT(uint16_t *LBA, uint16_t *PBA, uint8_t *linkStatus);
 	bool lowLevelFormat(char progressChar, Print* pr=&Serial);
 	uint8_t addBBLUT(uint32_t block_address);  //temporary for testing
-    const char * getMediaName();
+	const char * getMediaName();
+	const char * name() { return getMediaName(); }
 private:
 	int read(lfs_block_t block, lfs_off_t offset, void *buf, lfs_size_t size);
 	int prog(lfs_block_t block, lfs_off_t offset, const void *buf, lfs_size_t size);
@@ -644,11 +641,7 @@ private:
   
 	SPIClass *port;
 	uint8_t pin;
-	uint8_t addrbits;
-	uint32_t progtime;
-	uint32_t erasetime;
-	uint32_t chipsize;
-	uint32_t blocksize;
+	const void *hwinfo;
 	
 private:
   uint8_t die = 0;      //die = 0: use first 1GB die PA[16], die = 1: use second 1GB die PA[16].
@@ -666,14 +659,15 @@ private:
 class LittleFS_QPINAND : public LittleFS
 {
 public:
-	LittleFS_QPINAND() { }
+	LittleFS_QPINAND() : hwinfo(nullptr) { }
 	bool begin();
-    bool deviceErase();
+	bool deviceErase();
 	uint8_t readECC(uint32_t targetPage, uint8_t *buf, int size);
 	void readBBLUT(uint16_t *LBA, uint16_t *PBA, uint8_t *linkStatus);
 	bool lowLevelFormat(char progressChar);
 	uint8_t addBBLUT(uint32_t block_address);  //temporary for testing
 	const char * getMediaName();
+	const char * name() { return getMediaName(); }
 private:
 	int read(lfs_block_t block, lfs_off_t offset, void *buf, lfs_size_t size);
 	int prog(lfs_block_t block, lfs_off_t offset, const void *buf, lfs_size_t size);
@@ -696,27 +690,23 @@ private:
 	static int static_sync(const struct lfs_config *c) {
 		return 0;
 	}
-  bool isReady();
-  bool writeEnable();
-  void deviceReset();
-  void eraseSector(uint32_t address);
-  void writeStatusRegister(uint8_t reg, uint8_t data);
-  uint8_t readStatusRegister(uint16_t reg, bool dump);
+	bool isReady();
+	bool writeEnable();
+	void deviceReset();
+	void eraseSector(uint32_t address);
+	void writeStatusRegister(uint8_t reg, uint8_t data);
+	uint8_t readStatusRegister(uint16_t reg, bool dump);
   
-	uint8_t addrbits;
-	uint32_t progtime;
-	uint32_t erasetime;
-	uint32_t chipsize;
-	uint32_t blocksize;
+	const void *hwinfo;
 	
 private:
-  uint8_t die = 0;      //die = 0: use first 1GB die, die = 1: use second 1GB die.
-  uint8_t dies;
-  uint32_t capacityID ;   // capacity
-  uint32_t deviceID;
+	uint8_t die = 0;      //die = 0: use first 1GB die, die = 1: use second 1GB die.
+	uint8_t dies;
+	uint32_t capacityID ;   // capacity
+	uint32_t deviceID;
 
-  uint16_t eccSize = 64;
-  uint16_t PAGE_ECCSIZE = 2112;
+	uint16_t eccSize = 64;
+	uint16_t PAGE_ECCSIZE = 2112;
 
 };
 #endif
@@ -746,6 +736,7 @@ public:
   inline LittleFS * fs() { return (pfs == &fsnone)? nullptr : (LittleFS*)pfs ;}
   inline const char * displayName() {return display_name;}
   inline const char * getMediaName() {return (pfs == &fsnone)? (const char *)F("") : ((LittleFS*)pfs)->getMediaName();}
+  const char * name() { return getMediaName(); }
 
   // You have full access to internals.
   uint8_t csPin_;
@@ -782,6 +773,7 @@ public:
   inline LittleFS * fs() { return (pfs == &fsnone)? nullptr : (LittleFS*)pfs ;}
   inline const char * displayName() {return display_name;}
   inline const char * getMediaName() {return (pfs == &fsnone)? (const char *)F("") : ((LittleFS*)pfs)->getMediaName();}
+  const char * name() { return getMediaName(); }
   // You have full access to internals.
   uint8_t csPin;
   LittleFS_QSPIFlash flash;

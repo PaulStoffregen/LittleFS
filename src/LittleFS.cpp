@@ -121,6 +121,7 @@ bool LittleFS_SPIFlash::begin(uint8_t cspin, SPIClass &spiport)
 	//Serial.printf("Flash ID: %02X %02X %02X  %02X\n", buf[1], buf[2], buf[3], buf[4]);
 	const struct chipinfo *info = chip_lookup(buf + 1);
 	if (!info) return false;
+	hwinfo = info;
 	//Serial.printf("Flash size is %.2f Mbyte\n", (float)info->chipsize / 1048576.0f);
 
 	memset(&lfs, 0, sizeof(lfs));
@@ -139,10 +140,6 @@ bool LittleFS_SPIFlash::begin(uint8_t cspin, SPIClass &spiport)
 	config.lookahead_size = info->progsize;
 	// config.lookahead_size = config.block_count/8;
 	config.name_max = LFS_NAME_MAX;
-	addrbits = info->addrbits;
-	progtime = info->progtime;
-	erasetime = info->erasetime;
-	erasecmd = info->erasecmd;
 	configured = true;
 
 	//Serial.println("attempting to mount existing media");
@@ -166,18 +163,9 @@ bool LittleFS_SPIFlash::begin(uint8_t cspin, SPIClass &spiport)
 }
 
 FLASHMEM
-const char * LittleFS_SPIFlash::getMediaName(){
-  const uint8_t cmd_buf[4] = {0x9F, 0, 0, 0};
-  uint8_t buf[5];
-  port->beginTransaction(SPICONFIG);
-  digitalWrite(pin, LOW);
-  port->transfer(cmd_buf, buf, 4);
-  digitalWrite(pin, HIGH);
-  port->endTransaction();
-
-  const struct chipinfo *info = chip_lookup(buf + 1);
-
-  return info->pn;
+const char * LittleFS_SPIFlash::getMediaName() {
+	if (!hwinfo) return nullptr;
+	return ((const struct chipinfo *)hwinfo)->pn;
 }
 
 FLASHMEM
@@ -214,6 +202,7 @@ bool LittleFS_SPIFram::begin(uint8_t cspin, SPIClass &spiport)
 	//Serial.printf("Flash ID: %02X %02X %02X\n", buf[0], buf[1], buf[2]);
 	const struct chipinfo *info = chip_lookup(buf );
 	if (!info) return false;
+	hwinfo = info;
 	//Serial.printf("Flash size is %.2f Mbyte\n", (float)info->chipsize / 1048576.0f);
 
 	memset(&lfs, 0, sizeof(lfs));
@@ -231,9 +220,6 @@ bool LittleFS_SPIFram::begin(uint8_t cspin, SPIClass &spiport)
 	config.cache_size = info->progsize;
 	config.lookahead_size = info->progsize;
 	config.name_max = LFS_NAME_MAX;
-	addrbits = info->addrbits;
-	progtime = info->progtime;
-	erasetime = info->erasetime;
 	configured = true;
 
 	//Serial.println("attempting to mount existing media");
@@ -257,29 +243,9 @@ bool LittleFS_SPIFram::begin(uint8_t cspin, SPIClass &spiport)
 }
 
 FLASHMEM
-const char * LittleFS_SPIFram::getMediaName(){
-	uint8_t buf[9];
-	
-	port->beginTransaction(SPICONFIG);
-	digitalWrite(pin, LOW);
-	delayNanoseconds(50);
-	port->transfer(0x9f);  //0x9f - JEDEC register
-	for(uint8_t i = 0; i<9; i++) {
-		buf[i] = port->transfer(0);
-	}
-	//delayNanoseconds(50);
-	digitalWriteFast(pin, HIGH); // Chip deselect
-	port->endTransaction();
-
-	if (buf[0] == 0x7F) {
-		buf[0] = buf[6];
-		buf[1] = buf[7];
-		buf[2] = buf[8];
-	}
-	//Serial.printf("Flash ID: %02X %02X %02X\n", buf[0], buf[1], buf[2]);
-	const struct chipinfo *info = chip_lookup(buf );
-
-  return info->pn;
+const char * LittleFS_SPIFram::getMediaName() {
+	if (!hwinfo) return nullptr;
+	return ((const struct chipinfo *)hwinfo)->pn;
 }
 
 FLASHMEM
@@ -438,6 +404,7 @@ int LittleFS_SPIFlash::read(lfs_block_t block, lfs_off_t offset, void *buf, lfs_
 {
 	if (!port) return LFS_ERR_IO;
 	const uint32_t addr = block * config.block_size + offset;
+	const uint8_t addrbits = ((const struct chipinfo *)hwinfo)->addrbits;
 	const uint8_t cmd = (addrbits == 24) ? 0x03 : 0x13; // standard read command
 	uint8_t cmdaddr[5];
 	//Serial.printf("  addrbits=%d\n", addrbits);
@@ -458,6 +425,7 @@ int LittleFS_SPIFlash::prog(lfs_block_t block, lfs_off_t offset, const void *buf
 {
 	if (!port) return LFS_ERR_IO;
 	const uint32_t addr = block * config.block_size + offset;
+	const uint8_t addrbits = ((const struct chipinfo *)hwinfo)->addrbits;
 	const uint8_t cmd = (addrbits == 24) ? 0x02 : 0x12; // page program
 	uint8_t cmdaddr[5];
 	make_command_and_address(cmdaddr, cmd, addr, addrbits);
@@ -473,6 +441,7 @@ int LittleFS_SPIFlash::prog(lfs_block_t block, lfs_off_t offset, const void *buf
 	digitalWrite(pin, HIGH);
 	port->endTransaction();
 	//printtbuf(buf, 20);
+	const uint32_t progtime = ((const struct chipinfo *)hwinfo)->progtime;
 	return wait(progtime);
 }
 
@@ -489,6 +458,8 @@ int LittleFS_SPIFlash::erase(lfs_block_t block)
 	}
 	const uint32_t addr = block * config.block_size;
 	uint8_t cmdaddr[5];
+	const uint8_t erasecmd = ((const struct chipinfo *)hwinfo)->erasecmd;
+	const uint8_t addrbits = ((const struct chipinfo *)hwinfo)->addrbits;
 	make_command_and_address(cmdaddr, erasecmd, addr, addrbits);
 	//printtbuf(cmdaddr, 1 + (addrbits >> 3));
 	port->beginTransaction(SPICONFIG);
@@ -500,6 +471,7 @@ int LittleFS_SPIFlash::erase(lfs_block_t block)
 	port->transfer(cmdaddr, 1 + (addrbits >> 3));
 	digitalWrite(pin, HIGH);
 	port->endTransaction();
+	const uint32_t erasetime = ((const struct chipinfo *)hwinfo)->erasetime;
 	return wait(erasetime);
 }
 
@@ -530,6 +502,7 @@ int LittleFS_SPIFram::read(lfs_block_t block, lfs_off_t offset, void *buf, lfs_s
 	//FRAM READ OPERATION
 	uint8_t cmdaddr[5];
 	//Serial.printf("  addrbits=%d\n", addrbits);
+	const uint8_t addrbits = ((const struct chipinfo *)hwinfo)->addrbits;
 	make_command_and_address(cmdaddr, 0x03, addr, addrbits);
 	memset(buf, 0, size);
 	port->beginTransaction(SPICONFIG);
@@ -550,6 +523,7 @@ int LittleFS_SPIFram::prog(lfs_block_t block, lfs_off_t offset, const void *buf,
 
 	// F-RAM WRITE ENABLE COMMAND
 	uint8_t cmdaddr[5];
+	const uint8_t addrbits = ((const struct chipinfo *)hwinfo)->addrbits;
 	//Serial.printf("  addrbits=%d\n", addrbits);
 	make_command_and_address(cmdaddr, 0x02, addr, addrbits);
   
@@ -587,6 +561,7 @@ int LittleFS_SPIFram::erase(lfs_block_t block)
 	memset(buf, 0xFF, config.block_size);
 	uint8_t cmdaddr[5];
 	const uint32_t addr = block * config.block_size;
+	const uint8_t addrbits = ((const struct chipinfo *)hwinfo)->addrbits;
 	make_command_and_address(cmdaddr, 0x02, addr, addrbits);
 	
 	// F-RAM WRITE ENABLE COMMAND
@@ -751,7 +726,7 @@ static void flexspi2_ip_write(uint32_t index, uint32_t addr, const void *data, u
 FLASHMEM
 bool LittleFS_QSPIFlash::begin()
 {
-	//Serial.println("QSPI flash begin");
+	Serial.println("QSPI flash begin");
 
 	configured = false;
 
@@ -769,6 +744,7 @@ bool LittleFS_QSPIFlash::begin()
 	//Serial.printf("Flash ID: %02X %02X %02X\n", buf[0], buf[1], buf[2]);
 	const struct chipinfo *info = chip_lookup(buf);
 	if (!info) return false;
+	hwinfo = info;
 	//Serial.printf("Flash size is %.2f Mbyte\n", (float)info->chipsize / 1048576.0f);
 
 	memset(&lfs, 0, sizeof(lfs));
@@ -787,9 +763,6 @@ bool LittleFS_QSPIFlash::begin()
 	config.lookahead_size = info->progsize;
 	//config.lookahead_size = config.block_count/8;
 	config.name_max = LFS_NAME_MAX;
-	addrbits = info->addrbits;
-	progtime = info->progtime;
-	erasetime = info->erasetime;
 	configured = true;
 
 	// configure FlexSPI2 for chip's size
@@ -805,7 +778,7 @@ bool LittleFS_QSPIFlash::begin()
 	FLEXSPI2_LUT41 = 0;
 	flexspi2_ip_command(10, 0x00800000); // enable quad mode
 
-	if (addrbits == 24) {
+	if (info->addrbits == 24) {
 		// cmd index 9 = read QSPI (1-1-4)
 		FLEXSPI2_LUT36 = LUT0(CMD_SDR, PINS1, 0x6B) | LUT1(ADDR_SDR, PINS1, 24);
 		FLEXSPI2_LUT37 = LUT0(DUMMY_SDR, PINS4, 8) |  LUT1(READ_SDR, PINS4, 1);
@@ -875,6 +848,7 @@ int LittleFS_QSPIFlash::prog(lfs_block_t block, lfs_off_t offset, const void *bu
 	//printtbuf(buf, 20);
 	flexspi2_ip_write(11, 0x00800000 + addr, buf, size);
 	// TODO: detect errors, return LFS_ERR_IO
+	const uint32_t progtime = ((const struct chipinfo *)hwinfo)->progtime;
 	return wait(progtime);
 }
 
@@ -892,6 +866,7 @@ int LittleFS_QSPIFlash::erase(lfs_block_t block)
 	const uint32_t addr = block * config.block_size;
 	flexspi2_ip_command(12, 0x00800000 + addr);
 	// TODO: detect errors, return LFS_ERR_IO
+	const uint32_t erasetime = ((const struct chipinfo *)hwinfo)->erasetime;
 	return wait(erasetime);
 }
 
@@ -912,14 +887,8 @@ int LittleFS_QSPIFlash::wait(uint32_t microseconds)
 
 FLASHMEM
 const char * LittleFS_QSPIFlash::getMediaName(){
-	uint8_t buf[4] = {0, 0, 0, 0};
-
-	flexspi2_ip_read(8, 0x00800000, buf, 3);
-
-	//Serial.printf("Flash ID: %02X %02X %02X\n", buf[0], buf[1], buf[2]);
-	const struct chipinfo *info = chip_lookup(buf);
-
-  return info->pn;
+	if (!hwinfo) return nullptr;
+	return ((const struct chipinfo *)hwinfo)->pn;
 }
 
 

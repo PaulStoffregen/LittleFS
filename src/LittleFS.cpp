@@ -599,6 +599,8 @@ int LittleFS_SPIFram::wait(uint32_t microseconds)
 
 #if defined(__IMXRT1062__)
 
+extern const uint32_t qspi_memory_base;
+
 #define LUT0(opcode, pads, operand) (FLEXSPI_LUT_INSTRUCTION((opcode), (pads), (operand)))
 #define LUT1(opcode, pads, operand) (FLEXSPI_LUT_INSTRUCTION((opcode), (pads), (operand)) << 16)
 #define CMD_SDR         FLEXSPI_LUT_OPCODE_CMD_SDR
@@ -738,7 +740,7 @@ bool LittleFS_QSPIFlash::begin()
 	FLEXSPI2_LUT32 = LUT0(CMD_SDR, PINS1, 0x9F) | LUT1(READ_SDR, PINS1, 1);
 	FLEXSPI2_LUT33 = 0;
 
-	flexspi2_ip_read(8, 0x00800000, buf, 3);
+	flexspi2_ip_read(8, qspi_memory_base, buf, 3);
 
 
 	//Serial.printf("Flash ID: %02X %02X %02X\n", buf[0], buf[1], buf[2]);
@@ -773,10 +775,10 @@ bool LittleFS_QSPIFlash::begin()
 
 	// TODO: is this Winbond specific?  Diable for non-Winbond chips...
 	FLEXSPI2_LUT40 = LUT0(CMD_SDR, PINS1, 0x50);
-	flexspi2_ip_command(10, 0x00800000); // volatile write status enable
+	flexspi2_ip_command(10, qspi_memory_base); // volatile write status enable
 	FLEXSPI2_LUT40 = LUT0(CMD_SDR, PINS1, 0x31) | LUT1(CMD_SDR, PINS1, 0x02);
 	FLEXSPI2_LUT41 = 0;
-	flexspi2_ip_command(10, 0x00800000); // enable quad mode
+	flexspi2_ip_command(10, qspi_memory_base); // enable quad mode
 
 	if (info->addrbits == 24) {
 		// cmd index 9 = read QSPI (1-1-4)
@@ -835,7 +837,7 @@ bool LittleFS_QSPIFlash::begin()
 int LittleFS_QSPIFlash::read(lfs_block_t block, lfs_off_t offset, void *buf, lfs_size_t size)
 {
 	const uint32_t addr = block * config.block_size + offset;
-	flexspi2_ip_read(9, 0x00800000 + addr, buf, size);
+	flexspi2_ip_read(9, qspi_memory_base + addr, buf, size);
 	// TODO: detect errors, return LFS_ERR_IO
 	//printtbuf(buf, 20);
 	return 0;
@@ -843,10 +845,10 @@ int LittleFS_QSPIFlash::read(lfs_block_t block, lfs_off_t offset, void *buf, lfs
 
 int LittleFS_QSPIFlash::prog(lfs_block_t block, lfs_off_t offset, const void *buf, lfs_size_t size)
 {
-	flexspi2_ip_command(10, 0x00800000);
+	flexspi2_ip_command(10, qspi_memory_base);
 	const uint32_t addr = block * config.block_size + offset;
 	//printtbuf(buf, 20);
-	flexspi2_ip_write(11, 0x00800000 + addr, buf, size);
+	flexspi2_ip_write(11, qspi_memory_base + addr, buf, size);
 	// TODO: detect errors, return LFS_ERR_IO
 	const uint32_t progtime = ((const struct chipinfo *)hwinfo)->progtime;
 	return wait(progtime);
@@ -862,9 +864,9 @@ int LittleFS_QSPIFlash::erase(lfs_block_t block)
 		}
 		free(buffer);
 	}
-	flexspi2_ip_command(10, 0x00800000);
+	flexspi2_ip_command(10, qspi_memory_base);
 	const uint32_t addr = block * config.block_size;
-	flexspi2_ip_command(12, 0x00800000 + addr);
+	flexspi2_ip_command(12, qspi_memory_base + addr);
 	// TODO: detect errors, return LFS_ERR_IO
 	const uint32_t erasetime = ((const struct chipinfo *)hwinfo)->erasetime;
 	return wait(erasetime);
@@ -875,7 +877,7 @@ int LittleFS_QSPIFlash::wait(uint32_t microseconds)
 	elapsedMicros usec = 0;
 	while (1) {
 		uint8_t status;
-		flexspi2_ip_read(13, 0x00800000, &status, 1);
+		flexspi2_ip_read(13, qspi_memory_base, &status, 1);
 		if (!(status & 1)) break;
 		if (usec > microseconds) return LFS_ERR_IO; // timeout
 		yield();

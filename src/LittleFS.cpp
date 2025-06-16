@@ -726,7 +726,7 @@ static void flexspi2_ip_write(uint32_t index, uint32_t addr, const void *data, u
 FLASHMEM
 bool LittleFS_QSPIFlash::begin()
 {
-	Serial.println("QSPI flash begin");
+	// Serial.println("QSPI flash begin");
 
 	configured = false;
 

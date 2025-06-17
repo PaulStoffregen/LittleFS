@@ -798,7 +798,7 @@ const char * LittleFS_SPINAND::getMediaName() {
 #define PINS1           FLEXSPI_LUT_NUM_PADS_1
 #define PINS4           FLEXSPI_LUT_NUM_PADS_4
 
-extern const uint32_t qspi_memory_base __attribute__((weak));
+extern "C" const uint32_t qspi_memory_base __attribute__((weak));
 const uint32_t qspi_memory_base = 0x8*0x100000;
 
 static void flexspi2_ip_command(uint32_t index, uint32_t addr)

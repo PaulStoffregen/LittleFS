@@ -599,7 +599,7 @@ int LittleFS_SPIFram::wait(uint32_t microseconds)
 
 #if defined(__IMXRT1062__)
 
-extern const uint32_t qspi_memory_base;
+extern "C" const uint32_t qspi_memory_base;
 
 #define LUT0(opcode, pads, operand) (FLEXSPI_LUT_INSTRUCTION((opcode), (pads), (operand)))
 #define LUT1(opcode, pads, operand) (FLEXSPI_LUT_INSTRUCTION((opcode), (pads), (operand)) << 16)

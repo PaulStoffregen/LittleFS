@@ -236,11 +236,9 @@ private:
 class LittleFS : public FS
 {
 public:
-	LittleFS() {
-		configured = false;
-		mounted = false;
-		config.context = nullptr;
+	constexpr LittleFS() {
 	}
+	virtual ~LittleFS() { }
 	virtual bool format(int type=0, char progressChar=0, Print& pr=Serial) {
 		if(type == 0) { return quickFormat(); }
 		if(type == 1) { return lowLevelFormat(progressChar, &pr); }
@@ -350,11 +348,10 @@ public:
 	
 
 protected:
-	bool configured;
-	bool mounted;
-	lfs_t lfs;
-	lfs_config config;
-
+	bool configured = false;
+	bool mounted = false;
+	lfs_t lfs = {};
+	lfs_config config = {};
 };
 
 
@@ -364,7 +361,7 @@ protected:
 class LittleFS_RAM : public LittleFS
 {
 public:
-	LittleFS_RAM() { }
+	constexpr LittleFS_RAM() { }
 	bool begin(uint32_t size) {
 #if defined(__IMXRT1062__)
 		return begin(extmem_malloc(size), size);
@@ -451,10 +448,7 @@ private:
 class LittleFS_SPIFlash : public LittleFS
 {
 public:
-	LittleFS_SPIFlash() {
-		port = nullptr;
-		hwinfo = nullptr;
-	}
+	constexpr LittleFS_SPIFlash() { }
 	bool begin(uint8_t cspin, SPIClass &spiport=SPI);
 	const char * getMediaName();
 	const char * name() { return getMediaName(); }
@@ -480,9 +474,9 @@ private:
 	static int static_sync(const struct lfs_config *c) {
 		return 0;
 	}
-	SPIClass *port;
-	uint8_t pin;
-	const void *hwinfo;
+	SPIClass *port = nullptr;
+	uint8_t pin = 0;
+	const void *hwinfo = nullptr;
 };
 
 
@@ -490,10 +484,7 @@ private:
 class LittleFS_SPIFram : public LittleFS
 {
 public:
-	LittleFS_SPIFram() : port(nullptr), hwinfo(nullptr) { }
-		//port = nullptr;
-		//hwinfo = nullptr;
-	//}
+	constexpr LittleFS_SPIFram() { }
 	bool begin(uint8_t cspin, SPIClass &spiport=SPI);
 	const char * getMediaName();
 	const char * name() { return getMediaName(); }
@@ -519,9 +510,9 @@ private:
 	static int static_sync(const struct lfs_config *c) {
 		return 0;
 	}
-	SPIClass *port;
-	uint8_t pin;
-	const void *hwinfo;
+	SPIClass *port = nullptr;
+	uint8_t pin = 0;
+	const void *hwinfo = nullptr;
 };
 
 
@@ -529,7 +520,7 @@ private:
 class LittleFS_QSPIFlash : public LittleFS
 {
 public:
-	LittleFS_QSPIFlash() : hwinfo(nullptr) { }
+	constexpr LittleFS_QSPIFlash() { }
 	bool begin();
 	const char * getMediaName();
 	const char * name() { return getMediaName(); }
@@ -555,13 +546,13 @@ private:
 	static int static_sync(const struct lfs_config *c) {
 		return 0;
 	}
-	const void *hwinfo;
+	const void *hwinfo = nullptr;
 };
 #else
 class LittleFS_QSPIFlash : public LittleFS
 {
 public:
-	LittleFS_QSPIFlash() { }
+	constexpr LittleFS_QSPIFlash() { }
 	bool begin() { return false; }
 };
 #endif
@@ -572,7 +563,7 @@ public:
 class LittleFS_Program : public LittleFS
 {
 public:
-	LittleFS_Program() { }
+	constexpr LittleFS_Program() { }
 	bool begin(uint32_t size);
 	const char * getMediaName();
 	const char * name() { return getMediaName(); }
@@ -590,7 +581,7 @@ private:
 class LittleFS_Program : public LittleFS
 {
 public:
-	LittleFS_Program() { }
+	constexpr LittleFS_Program() { }
 	bool begin(uint32_t size) { return false; }
 	const char * getMediaName() { return (const char *)F("PROGRAM"); }
 	const char * name() { return getMediaName(); }
@@ -600,7 +591,7 @@ public:
 class LittleFS_SPINAND : public LittleFS
 {
 public:
-	LittleFS_SPINAND() : port(nullptr), hwinfo(nullptr) { }
+	constexpr LittleFS_SPINAND() { }
 	bool begin(uint8_t cspin, SPIClass &spiport=SPI);
 	uint8_t readECC(uint32_t address, uint8_t *data, int length);
 	void readBBLUT(uint16_t *LBA, uint16_t *PBA, uint8_t *linkStatus);
@@ -639,15 +630,15 @@ private:
 
   void deviceReset();
   
-	SPIClass *port;
-	uint8_t pin;
-	const void *hwinfo;
+	SPIClass *port = nullptr;
+	uint8_t pin = 0;
+	const void *hwinfo = nullptr;
 	
 private:
   uint8_t die = 0;      //die = 0: use first 1GB die PA[16], die = 1: use second 1GB die PA[16].
   uint8_t dies = 0;		//used for W25M02
-  uint32_t capacityID ;   // capacity
-  uint32_t deviceID;
+  uint32_t capacityID = 0;   // capacity
+  uint32_t deviceID = 0;
 
   uint16_t eccSize = 64;
   uint16_t PAGE_ECCSIZE = 2112;
@@ -659,7 +650,7 @@ private:
 class LittleFS_QPINAND : public LittleFS
 {
 public:
-	LittleFS_QPINAND() : hwinfo(nullptr) { }
+	constexpr LittleFS_QPINAND() { }
 	bool begin();
 	bool deviceErase();
 	uint8_t readECC(uint32_t targetPage, uint8_t *buf, int size);
@@ -697,13 +688,13 @@ private:
 	void writeStatusRegister(uint8_t reg, uint8_t data);
 	uint8_t readStatusRegister(uint16_t reg, bool dump);
   
-	const void *hwinfo;
+	const void *hwinfo = nullptr;
 	
 private:
 	uint8_t die = 0;      //die = 0: use first 1GB die, die = 1: use second 1GB die.
-	uint8_t dies;
-	uint32_t capacityID ;   // capacity
-	uint32_t deviceID;
+	uint8_t dies = 0;
+	uint32_t capacityID = 0;   // capacity
+	uint32_t deviceID = 0;
 
 	uint16_t eccSize = 64;
 	uint16_t PAGE_ECCSIZE = 2112;
@@ -731,7 +722,7 @@ class FS_NONE : public FS {
 
 class LittleFS_SPI : public FS {
 public:
-  LittleFS_SPI(uint8_t pin=0xff) : csPin_(pin) {}
+  constexpr LittleFS_SPI(uint8_t pin=0xff) : csPin_(pin) {}
   bool begin(uint8_t cspin=0xff, SPIClass &spiport=SPI);
   inline LittleFS * fs() { return (pfs == &fsnone)? nullptr : (LittleFS*)pfs ;}
   inline const char * displayName() {return display_name;}
@@ -739,7 +730,7 @@ public:
   const char * name() { return getMediaName(); }
 
   // You have full access to internals.
-  uint8_t csPin_;
+  uint8_t csPin_ = 0xFF;
   LittleFS_SPIFlash flash;
   LittleFS_SPIFram fram;
   LittleFS_SPINAND nand;
@@ -758,7 +749,7 @@ public:
 
 private:
   FS *pfs = &fsnone;
-  char display_name[10];
+  char display_name[10] = {};
 
 };
 
@@ -768,14 +759,14 @@ private:
 #ifdef __IMXRT1062__
 class LittleFS_QSPI : public FS {
 public:
-  LittleFS_QSPI(){}
+  constexpr LittleFS_QSPI(){}
   bool begin();
   inline LittleFS * fs() { return (pfs == &fsnone)? nullptr : (LittleFS*)pfs ;}
   inline const char * displayName() {return display_name;}
   inline const char * getMediaName() {return (pfs == &fsnone)? (const char *)F("") : ((LittleFS*)pfs)->getMediaName();}
   const char * name() { return getMediaName(); }
   // You have full access to internals.
-  uint8_t csPin;
+  //uint8_t csPin;
   LittleFS_QSPIFlash flash;
   LittleFS_QPINAND nand;
   FS_NONE fsnone;
@@ -793,7 +784,7 @@ public:
   virtual bool format(int type=0, char progressChar=0, Print& pr=Serial) { return pfs->format(type, progressChar, pr); }
 private:
   FS *pfs = &fsnone;
-  char display_name[10];
+  char display_name[10] = {};
 };
 #endif
 

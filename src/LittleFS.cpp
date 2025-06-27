@@ -726,7 +726,9 @@ static void flexspi2_ip_write(uint32_t index, uint32_t addr, const void *data, u
 FLASHMEM
 bool LittleFS_QSPIFlash::begin()
 {
-	// Serial.println("QSPI flash begin");
+	// Workaround for strange compatibility problem with Wire (and likely other libs)
+	// https://github.com/PaulStoffregen/LittleFS/issues/63
+	if (Serial) ;
 
 	configured = false;
 

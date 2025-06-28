@@ -65,7 +65,7 @@
 #define SPICONFIG_NAND   SPISettings(30000000, MSBFIRST, SPI_MODE0)
 
 
-PROGMEM static const struct chipinfo {
+PROGMEM static const struct nand_chipinfo {
 	uint8_t id[3];
 	uint16_t progsize;	// page size for programming, in bytes
 	uint32_t erasesize;	// sector size for erasing, in bytes
@@ -89,9 +89,9 @@ volatile uint32_t currentPage     = UINT32_MAX;
 volatile uint32_t currentPageRead = UINT32_MAX;
 
 
-static const struct chipinfo * chip_lookup(const uint8_t *id)
+static const struct nand_chipinfo * chip_lookup(const uint8_t *id)
 {
-	const unsigned int numchips = sizeof(known_chips) / sizeof(struct chipinfo);
+	const unsigned int numchips = sizeof(known_chips) / sizeof(struct nand_chipinfo);
 	for (unsigned int i=0; i < numchips; i++) {
 		const uint8_t *chip = known_chips[i].id;
 		if (id[0] == chip[0] && id[1] == chip[1] && id[2] == chip[2]) {
@@ -122,7 +122,7 @@ bool LittleFS_SPINAND::begin(uint8_t cspin, SPIClass &spiport)
 	port->endTransaction();
 
 	//Serial.printf("Flash ID: %02X %02X %02X\n", buf[2], buf[3], buf[4]);
-	const struct chipinfo *info = chip_lookup(buf+2);
+	const struct nand_chipinfo *info = chip_lookup(buf+2);
 	if (!info) return false;
 	hwinfo = (const void *)info;
 	//Serial.printf("Flash size is %.2f Mbyte\n", (float)info->chipsize / 1048576.0f);
@@ -234,7 +234,7 @@ int LittleFS_SPINAND::read(lfs_block_t block, lfs_off_t offset, void *buf, lfs_s
 	} else {
 		loadPage(addr);
 	}
-	const uint32_t progtime = ((const struct chipinfo *)hwinfo)->progtime;
+	const uint32_t progtime = ((const struct nand_chipinfo *)hwinfo)->progtime;
 	wait(progtime);
 	
 	uint16_t column = LINEAR_TO_COLUMN(addr);
@@ -313,7 +313,7 @@ int LittleFS_SPINAND::prog(lfs_block_t block, lfs_off_t offset, const void *buf,
 		if(pageAddress > pagesPerDie)
 			pageAddress -= pagesPerDie;		//W25M02 has 2 separate W25N01 dies addressed individually
 		cmd1[1] = 0;						//dummy block for write is 0.
-		const uint32_t progtime = ((const struct chipinfo *)hwinfo)->progtime;
+		const uint32_t progtime = ((const struct nand_chipinfo *)hwinfo)->progtime;
 		wait(progtime);
 	} 
 	
@@ -331,7 +331,7 @@ int LittleFS_SPINAND::prog(lfs_block_t block, lfs_off_t offset, const void *buf,
 	digitalWrite(pin, HIGH);
 	port->endTransaction();
 
-	const uint32_t progtime = ((const struct chipinfo *)hwinfo)->progtime;
+	const uint32_t progtime = ((const struct nand_chipinfo *)hwinfo)->progtime;
 	wait(progtime);
 	//uint8_t status = readStatusRegister(0xA0, false );  //0xA0 - status register
 	//if ((status &  (1 << 3)) == 1)   //Status Program Fail
@@ -367,7 +367,7 @@ int LittleFS_SPINAND::erase(lfs_block_t block)
 	}
 
 	eraseSector(addr);
-	const uint32_t erasetime = ((const struct chipinfo *)hwinfo)->erasetime;
+	const uint32_t erasetime = ((const struct nand_chipinfo *)hwinfo)->erasetime;
 	return 	wait(erasetime);
 }
  
@@ -405,7 +405,7 @@ int LittleFS_SPINAND::wait(uint32_t microseconds)
     port->transfer(0x06);  //Write Enable 0x06
     digitalWrite(pin, HIGH);
     port->endTransaction();
-	const uint32_t progtime = ((const struct chipinfo *)hwinfo)->progtime;
+	const uint32_t progtime = ((const struct nand_chipinfo *)hwinfo)->progtime;
     wait(progtime);
 	
   status = readStatusRegister(0xC0, false);
@@ -445,7 +445,7 @@ void LittleFS_SPINAND::eraseSector(uint32_t address)
 		if(pageAddr > pagesPerDie)
 			pageAddr -= pagesPerDie;		//W25M02 has 2 separate W25N01 dies addressed individually
 		cmd[1] = 0;						//dummy block for write is 0.
-		const uint32_t progtime = ((const struct chipinfo *)hwinfo)->progtime;
+		const uint32_t progtime = ((const struct nand_chipinfo *)hwinfo)->progtime;
 		wait(progtime);
 	} 
 
@@ -530,7 +530,7 @@ void LittleFS_SPINAND::loadPage(uint32_t address)
 		if(targetPage > pagesPerDie)
 			targetPage -= pagesPerDie;		//W25M02 has 2 separate W25N01 dies addressed individually
 		cmd[1] = 0;						//dummy block for write is 0.
-		const uint32_t progtime = ((const struct chipinfo *)hwinfo)->progtime;
+		const uint32_t progtime = ((const struct nand_chipinfo *)hwinfo)->progtime;
 		wait(progtime);		
 	} 
 
@@ -587,7 +587,7 @@ uint8_t LittleFS_SPINAND::readECC(uint32_t targetPage, uint8_t *data, int length
     digitalWrite(pin, HIGH);
     port->endTransaction();
 
-	const uint32_t progtime = ((const struct chipinfo *)hwinfo)->progtime;
+	const uint32_t progtime = ((const struct nand_chipinfo *)hwinfo)->progtime;
 	wait(progtime);
 	
 	uint8_t cmd1[4];
@@ -719,8 +719,8 @@ uint8_t LittleFS_SPINAND::addBBLUT(uint32_t block_address)
 	
 	uint16_t pba, lba;
 	pba = block_address;
-	const uint32_t blocksize = ((const struct chipinfo *)hwinfo)->erasesize;
-	const uint32_t chipsize = ((const struct chipinfo *)hwinfo)->chipsize;
+	const uint32_t blocksize = ((const struct nand_chipinfo *)hwinfo)->erasesize;
+	const uint32_t chipsize = ((const struct nand_chipinfo *)hwinfo)->chipsize;
 	lba = LINEAR_TO_BLOCK((firstOpenEntry+1)*blocksize + chipsize);
 	Serial.printf("PBA: %d, LBA: %d\n", pba, lba);
 	
@@ -736,7 +736,7 @@ uint8_t LittleFS_SPINAND::addBBLUT(uint32_t block_address)
     //digitalWrite(pin, HIGH);
     //port->endTransaction();
 	#endif
-	const uint32_t progtime = ((const struct chipinfo *)hwinfo)->progtime;
+	const uint32_t progtime = ((const struct nand_chipinfo *)hwinfo)->progtime;
 	wait(progtime);
 	
   }
@@ -781,7 +781,7 @@ bool LittleFS_SPINAND::lowLevelFormat(char progressChar, Print* pr)
 
 const char * LittleFS_SPINAND::getMediaName() {
 	if (!hwinfo) return nullptr; 
-	return ((const struct chipinfo *)hwinfo)->pn;
+	return ((const struct nand_chipinfo *)hwinfo)->pn;
 }
 
 
@@ -942,7 +942,7 @@ bool LittleFS_QPINAND::begin() {
 	flexspi2_ip_read(8, 0x00800000, buf, 4);
 
 	//Serial.printf("Flash ID: %02X %02X %02X\n", buf[1], buf[2], buf[3]);
-	const struct chipinfo *info = chip_lookup(buf+1);
+	const struct nand_chipinfo *info = chip_lookup(buf+1);
 	if (!info) return false;
 	hwinfo = info;
 	//Serial.printf("Flash size is %.2f Mbyte\n", (float)info->chipsize / 1048576.0f);
@@ -1078,7 +1078,7 @@ int LittleFS_QPINAND::read(lfs_block_t block, lfs_off_t offset, void *buf, lfs_s
 	
 	
     flexspi2_ip_command(12, 0x00800000 + newTargetPage);   // Page data read Lut
-	const uint32_t progtime = ((const struct chipinfo *)hwinfo)->progtime;
+	const uint32_t progtime = ((const struct nand_chipinfo *)hwinfo)->progtime;
 	wait(progtime);
 
     currentPageRead = targetPage;
@@ -1138,7 +1138,7 @@ int LittleFS_QPINAND::prog(lfs_block_t block, lfs_off_t offset, const void *buf,
 		// die select 0xc2
 		FLEXSPI2_LUT44 = LUT0(CMD_SDR, PINS1, 0xC2) | LUT1(WRITE_SDR, PINS1, 1); 
 		flexspi2_ip_write(11, 0x00800000, &val, 1);
-		const uint32_t progtime = ((const struct chipinfo *)hwinfo)->progtime;
+		const uint32_t progtime = ((const struct nand_chipinfo *)hwinfo)->progtime;
 		wait(progtime);
 	} else {
 		if(pageAddress > pagesPerDie ) {
@@ -1155,7 +1155,7 @@ int LittleFS_QPINAND::prog(lfs_block_t block, lfs_off_t offset, const void *buf,
 	FLEXSPI2_LUT52 = LUT0(CMD_SDR, PINS1, 0x32) | LUT1(CADDR_SDR, PINS1, 0x10);
 	FLEXSPI2_LUT53 = LUT0(WRITE_SDR, PINS4, 1);
 	flexspi2_ip_write(13, 0x00800000 + columnAddress, buf, size);
-	const uint32_t progtime = ((const struct chipinfo *)hwinfo)->progtime;
+	const uint32_t progtime = ((const struct nand_chipinfo *)hwinfo)->progtime;
 	wait(progtime);
 
 	//uint8_t status = readStatusRegister(0xC0, false );  //Status Register
@@ -1184,7 +1184,7 @@ int LittleFS_QPINAND::erase(lfs_block_t block)
 	}
 	
 	eraseSector(addr);
-	const uint32_t erasetime = ((const struct chipinfo *)hwinfo)->erasetime;
+	const uint32_t erasetime = ((const struct nand_chipinfo *)hwinfo)->erasetime;
 	wait(erasetime);
 	return 0;
 }
@@ -1254,7 +1254,7 @@ bool LittleFS_QPINAND::writeEnable()
   FLEXSPI2_LUT44 = LUT0(CMD_SDR, PINS1, 0x06);  //Write enable 0x06
   flexspi2_ip_command(11, 0x00800000); //Write Enable
   // Assume that we're about to do some writing, so the device is just about to become busy
-  const uint32_t progtime = ((const struct chipinfo *)hwinfo)->progtime;
+  const uint32_t progtime = ((const struct nand_chipinfo *)hwinfo)->progtime;
   wait(progtime);
   
   status = readStatusRegister(0xC0, false);
@@ -1289,7 +1289,7 @@ void LittleFS_QPINAND::eraseSector(uint32_t address)
 		// die select 0xc2
 		FLEXSPI2_LUT44 = LUT0(CMD_SDR, PINS1, 0xC2) | LUT1(WRITE_SDR, PINS1, 1); 
 		flexspi2_ip_write(11, 0x00800000, &val, 1);
-		const uint32_t progtime = ((const struct chipinfo *)hwinfo)->progtime;
+		const uint32_t progtime = ((const struct nand_chipinfo *)hwinfo)->progtime;
 		wait(progtime);
 	} else {
 		if(pageAddr > pagesPerDie ) {
@@ -1348,7 +1348,7 @@ uint8_t LittleFS_QPINAND::readECC(uint32_t targetPage, uint8_t *buf, int size)
 	
 	
     flexspi2_ip_command(12, 0x00800000 + newTargetPage);   // Page data read Lut
-	const uint32_t progtime = ((const struct chipinfo *)hwinfo)->progtime;
+	const uint32_t progtime = ((const struct nand_chipinfo *)hwinfo)->progtime;
 	wait(progtime);
 
     currentPageRead = targetPage;
@@ -1461,8 +1461,8 @@ uint8_t LittleFS_QPINAND::addBBLUT(uint32_t block_address)
 	//Write BBLUT with next sequential block
 	uint16_t pba, lba;
 	pba = block_address;
-	const uint32_t blocksize = ((const struct chipinfo *)hwinfo)->erasesize;
-	const uint32_t chipsize = ((const struct chipinfo *)hwinfo)->chipsize;
+	const uint32_t blocksize = ((const struct nand_chipinfo *)hwinfo)->erasesize;
+	const uint32_t chipsize = ((const struct nand_chipinfo *)hwinfo)->chipsize;
 	//lba = LINEAR_TO_BLOCK((firstOpenEntry+1)*config.block_size);
 	lba = LINEAR_TO_BLOCK((firstOpenEntry+1)*blocksize + chipsize);
 	Serial.printf("PBA: %d, LBA: %d\n", pba, lba);
@@ -1476,7 +1476,7 @@ uint8_t LittleFS_QPINAND::addBBLUT(uint32_t block_address)
    //FLEXSPI2_LUT44 = LUT0(CMD_SDR, PINS1, 0xA1) | LUT0(WRITE_SDR, PINS1, 1);  
    //flexspi2_ip_write(8, 0x00800000, cmd, 4);
 	#endif	
-	const uint32_t progtime = ((const struct chipinfo *)hwinfo)->progtime;
+	const uint32_t progtime = ((const struct nand_chipinfo *)hwinfo)->progtime;
 	wait(progtime);
   }
 	return 0;
@@ -1516,6 +1516,6 @@ bool LittleFS_QPINAND::lowLevelFormat(char progressChar)
 
 const char * LittleFS_QPINAND::getMediaName() {
 	if (!hwinfo) return nullptr; 
-	return ((const struct chipinfo *)hwinfo)->pn;
+	return ((const struct nand_chipinfo *)hwinfo)->pn;
 }
 #endif // __IMXRT1062__

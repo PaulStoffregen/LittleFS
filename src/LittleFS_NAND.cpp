@@ -798,14 +798,15 @@ const char * LittleFS_SPINAND::getMediaName() {
 #define PINS1           FLEXSPI_LUT_NUM_PADS_1
 #define PINS4           FLEXSPI_LUT_NUM_PADS_4
 
-static const uint32_t flashBaseAddr = 0x00800000;
-  //static const uint32_t flashBaseAddr = 0x01000000u;
+//static const uint32_t flashBaseAddr = 0x00800000;
+//static const uint32_t flashBaseAddr = 0x01000000u;
 
 
 static void flexspi2_ip_command(uint32_t index, uint32_t addr)
 {
 	uint32_t n;
-	FLEXSPI2_IPCR0 = addr;
+	const uint32_t addr_offset = (FLEXSPI2_FLSHA1CR0 & 0x7FFFFF) << 10;
+	FLEXSPI2_IPCR0 = addr + addr_offset;
 	FLEXSPI2_IPCR1 = FLEXSPI_IPCR1_ISEQID(index);
 	FLEXSPI2_IPCMD = FLEXSPI_IPCMD_TRG;
 	while (!((n = FLEXSPI2_INTR) & FLEXSPI_INTR_IPCMDDONE)); // wait
@@ -823,7 +824,8 @@ static void flexspi2_ip_read(uint32_t index, uint32_t addr, void *data, uint32_t
 	FLEXSPI2_INTR = FLEXSPI_INTR_IPRXWA;
 	// Clear RX FIFO and set watermark to 16 bytes
 	FLEXSPI2_IPRXFCR = FLEXSPI_IPRXFCR_CLRIPRXF | FLEXSPI_IPRXFCR_RXWMRK(1);
-	FLEXSPI2_IPCR0 = addr;
+	const uint32_t addr_offset = (FLEXSPI2_FLSHA1CR0 & 0x7FFFFF) << 10;
+	FLEXSPI2_IPCR0 = addr + addr_offset;
 	FLEXSPI2_IPCR1 = FLEXSPI_IPCR1_ISEQID(index) | FLEXSPI_IPCR1_IDATSZ(length);
 	FLEXSPI2_IPCMD = FLEXSPI_IPCMD_TRG;
 // page 1649 : Reading Data from IP RX FIFO
@@ -887,7 +889,8 @@ static void flexspi2_ip_write(uint32_t index, uint32_t addr, const void *data, u
 	const uint8_t *src;
 	uint32_t n, wrlen;
 
-	FLEXSPI2_IPCR0 = addr;
+	const uint32_t addr_offset = (FLEXSPI2_FLSHA1CR0 & 0x7FFFFF) << 10;
+	FLEXSPI2_IPCR0 = addr + addr_offset;
 	FLEXSPI2_IPCR1 = FLEXSPI_IPCR1_ISEQID(index) | FLEXSPI_IPCR1_IDATSZ(length);
 	src = (const uint8_t *)data;
 	FLEXSPI2_IPCMD = FLEXSPI_IPCMD_TRG;
@@ -1220,7 +1223,7 @@ void LittleFS_QPINAND::writeStatusRegister(uint8_t reg, uint8_t data)
   FLEXSPI2_LUT32 = LUT0(CMD_SDR, PINS1, 0x01) | LUT1(CMD_SDR, PINS1, reg);
   FLEXSPI2_LUT33 = LUT0(WRITE_SDR, PINS1, 1);
 
-  flexspi2_ip_write(8, 0x00800000, buf, 1);
+  flexspi2_ip_write(8, 0, buf, 1);
 
 }
 
@@ -1288,7 +1291,7 @@ void LittleFS_QPINAND::eraseSector(uint32_t address)
 
 		// die select 0xc2
 		FLEXSPI2_LUT44 = LUT0(CMD_SDR, PINS1, 0xC2) | LUT1(WRITE_SDR, PINS1, 1); 
-		flexspi2_ip_write(11, 0x00800000, &val, 1);
+		flexspi2_ip_write(11, 0, &val, 1);
 		const uint32_t progtime = ((const struct chipinfo *)hwinfo)->progtime;
 		wait(progtime);
 	} else {
@@ -1336,7 +1339,7 @@ uint8_t LittleFS_QPINAND::readECC(uint32_t targetPage, uint8_t *buf, int size)
 		
 		// die select 0xc2
 		FLEXSPI2_LUT44 = LUT0(CMD_SDR, PINS1, 0xC2) | LUT1(WRITE_SDR, PINS1, 1); 
-		flexspi2_ip_write(11, 0x00800000, &val, 1);
+		flexspi2_ip_write(11, 0, &val, 1);
 	} else {
 		if(targetPage > pagesPerDie ) {
 			//targetPage -= sectorSize;
@@ -1474,7 +1477,7 @@ uint8_t LittleFS_QPINAND::addBBLUT(uint32_t block_address)
 	cmd[3] = lba;
 	
    //FLEXSPI2_LUT44 = LUT0(CMD_SDR, PINS1, 0xA1) | LUT0(WRITE_SDR, PINS1, 1);  
-   //flexspi2_ip_write(8, 0x00800000, cmd, 4);
+   //flexspi2_ip_write(8, 0, cmd, 4);
 	#endif	
 	const uint32_t progtime = ((const struct chipinfo *)hwinfo)->progtime;
 	wait(progtime);

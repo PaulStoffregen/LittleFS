@@ -79,10 +79,10 @@ PROGMEM static const struct chipinfo {
 	//{{0xEF, 0xAA, 0x21}, 2048, 131072, 134217728,   2000, 15000},  //Winbond W25N01G
 	//Upper 24 blocks * 128KB/block will be used for bad block replacement area
 	//so reducing total chip size: 134217728 - 24*131072
-    {{0xEF, 0xAA, 0x21}, 2048, 131072, 0, 131596288, 2000, 15000, "W25N01GVZEIG"},  //Winbond W25N01G
+	{{0xEF, 0xAA, 0x21}, 2048, 131072, 0, 131596288, 2000, 15000, "W25N01GVZEIG"},  //Winbond W25N01G
 	//{{0xEF, 0xAA, 0x22}, 2048, 131072, 134217728*2, 2000, 15000},  //Winbond W25N02G
 	{{0xEF, 0xAA, 0x22}, 2048, 131072, 0, 265289728, 2000, 15000, "W25N02KVZEIR"},  //Winbond W25N02G
-    {{0xEF, 0xBB, 0x21}, 2048, 131072, 0, 265289728, 2000, 15000, "W25M02"},  //Winbond W25M02
+	{{0xEF, 0xBB, 0x21}, 2048, 131072, 0, 265289728, 2000, 15000, "W25M02"},  //Winbond W25M02
 };
 
 volatile uint32_t currentPage     = UINT32_MAX;
@@ -146,14 +146,14 @@ bool LittleFS_SPINAND::begin(uint8_t cspin, SPIClass &spiport)
 	}
 
 		
-  //uint8_t status;
-  // No protection, WP-E off, WP-E prevents use of IO2.  PROT_REG(0xAO), PROT_CLEAR(0)
-  writeStatusRegister(0xA0, 0);
-  readStatusRegister(0xA0, false);
+	//uint8_t status;
+	// No protection, WP-E off, WP-E prevents use of IO2.  PROT_REG(0xAO), PROT_CLEAR(0)
+	writeStatusRegister(0xA0, 0);
+	readStatusRegister(0xA0, false);
 
-  // Buffered read mode (BUF = 1), ECC enabled (ECC = 1), 0xB0(0xB0), ECC_ENABLE((1 << 4)), ReadMode((1 << 3))
-  writeStatusRegister(0xB0, (1 << 4) | (1 << 3));
-  readStatusRegister(0xB0, false);
+	// Buffered read mode (BUF = 1), ECC enabled (ECC = 1), 0xB0(0xB0), ECC_ENABLE((1 << 4)), ReadMode((1 << 3))
+	writeStatusRegister(0xB0, (1 << 4) | (1 << 3));
+	readStatusRegister(0xB0, false);
 
 	memset(&lfs, 0, sizeof(lfs));
 	memset(&config, 0, sizeof(config));
@@ -244,13 +244,13 @@ int LittleFS_SPINAND::read(lfs_block_t block, lfs_off_t offset, void *buf, lfs_s
 	cmd[1] = column >> 8; 
 	cmd[2] = column;
 	cmd[3] = 0;
-    
-  	port->beginTransaction(SPICONFIG_NAND);
+
+	port->beginTransaction(SPICONFIG_NAND);
 	digitalWrite(pin, LOW);
 	port->transfer(cmd, 4);
 	port->transfer(buf, size);
-    digitalWrite(pin, HIGH);
-    port->endTransaction();
+	digitalWrite(pin, HIGH);
+	port->endTransaction();
 	wait(progtime);
 
 	// Check ECC
@@ -374,14 +374,14 @@ int LittleFS_SPINAND::erase(lfs_block_t block)
 bool LittleFS_SPINAND::isReady()
 {
 	uint8_t val;
-  	port->beginTransaction(SPICONFIG_NAND);
+	port->beginTransaction(SPICONFIG_NAND);
 	digitalWrite(pin, LOW);
-    port->transfer(0x05);  //0x05 - read status register
-    port->transfer(0xC0);
-    val = port->transfer(0x00);
-    digitalWrite(pin, HIGH);
-    port->endTransaction();
-  return ((val & (1 << 0)) == 0);
+	port->transfer(0x05);  //0x05 - read status register
+	port->transfer(0xC0);
+	val = port->transfer(0x00);
+	digitalWrite(pin, HIGH);
+	port->endTransaction();
+	return ((val & (1 << 0)) == 0);
 }
 
 int LittleFS_SPINAND::wait(uint32_t microseconds)
@@ -397,20 +397,20 @@ int LittleFS_SPINAND::wait(uint32_t microseconds)
 }
 
  
- bool LittleFS_SPINAND::writeEnable()
- {
-   uint8_t status;
-  	port->beginTransaction(SPICONFIG_NAND);
+bool LittleFS_SPINAND::writeEnable()
+{
+	uint8_t status;
+	port->beginTransaction(SPICONFIG_NAND);
 	digitalWrite(pin, LOW);
-    port->transfer(0x06);  //Write Enable 0x06
-    digitalWrite(pin, HIGH);
-    port->endTransaction();
+	port->transfer(0x06);  //Write Enable 0x06
+	digitalWrite(pin, HIGH);
+	port->endTransaction();
 	const uint32_t progtime = ((const struct chipinfo *)hwinfo)->progtime;
-    wait(progtime);
+	wait(progtime);
 	
-  status = readStatusRegister(0xC0, false);
-  return status & (0x02);
- }
+	status = readStatusRegister(0xC0, false);
+	return status & (0x02);
+}
 
 
 void LittleFS_SPINAND::eraseSector(uint32_t address)
@@ -449,20 +449,20 @@ void LittleFS_SPINAND::eraseSector(uint32_t address)
 		wait(progtime);
 	} 
 
-    cmd[0] = 0xD8;   //Block erase, 0xD8
-    cmd[2] = pageAddr >> 8;
-    cmd[3] = pageAddr;
+	cmd[0] = 0xD8;   //Block erase, 0xD8
+	cmd[2] = pageAddr >> 8;
+	cmd[3] = pageAddr;
 
 	writeEnable();
 	
 	port->beginTransaction(SPICONFIG_NAND);
 	digitalWrite(pin, LOW);
 	port->transfer(cmd, 4);
-    digitalWrite(pin, HIGH);
-    port->endTransaction();
-  
-    //uint16_t status = readStatusRegister(0x05,false);
-    //if ((status &  (1 << 2)) == 1)   //Status erase Fail
+	digitalWrite(pin, HIGH);
+	port->endTransaction();
+
+	//uint16_t status = readStatusRegister(0x05,false);
+	//if ((status &  (1 << 2)) == 1)   //Status erase Fail
 	//		Serial.println( "erase Status: FAILED ");
 }
 
@@ -471,34 +471,33 @@ void LittleFS_SPINAND::writeStatusRegister(uint8_t reg, uint8_t data)
 {
 	port->beginTransaction(SPICONFIG_NAND);
 	digitalWrite(pin, LOW);
-    port->transfer(0x01);  //0x01 - write status register
-    port->transfer(reg);
-    port->transfer(data);
-    digitalWrite(pin, HIGH);
-    port->endTransaction();
-
+	port->transfer(0x01);  //0x01 - write status register
+	port->transfer(reg);
+	port->transfer(data);
+	digitalWrite(pin, HIGH);
+	port->endTransaction();
 }
 
 
 uint8_t LittleFS_SPINAND::readStatusRegister(uint16_t reg, bool dump)
 {
-  uint8_t val;
-  	port->beginTransaction(SPICONFIG_NAND);
+	uint8_t val;
+	port->beginTransaction(SPICONFIG_NAND);
 	digitalWrite(pin, LOW);
-    port->transfer(0x05);  //0x05 - read status register
-    port->transfer(reg);
-    val = port->transfer(0x00);
-    digitalWrite(pin, HIGH);
-    port->endTransaction();
+	port->transfer(0x05);  //0x05 - read status register
+	port->transfer(reg);
+	val = port->transfer(0x00);
+	digitalWrite(pin, HIGH);
+	port->endTransaction();
 
-  if(dump) {
-    //Serial.printf("Status of reg 0x%x: \n", reg);
-    //Serial.printf("(HEX: ) 0x%02X, (Binary: )", val);
-    //Serial.println(val, BIN);
-    //Serial.println();
-  }
-  
-  return val;
+	if(dump) {
+		//Serial.printf("Status of reg 0x%x: \n", reg);
+		//Serial.printf("(HEX: ) 0x%02X, (Binary: )", val);
+		//Serial.println(val, BIN);
+		//Serial.println();
+	}
+
+	return val;
 
 }
 
@@ -507,9 +506,8 @@ uint8_t LittleFS_SPINAND::readStatusRegister(uint16_t reg, bool dump)
 ////////////////////////////////////////////////////////////
 void LittleFS_SPINAND::loadPage(uint32_t address)
 {
-    uint32_t targetPage = LINEAR_TO_PAGE(address);
-  
-    uint8_t cmd[4], die_select;
+	uint32_t targetPage = LINEAR_TO_PAGE(address);
+	uint8_t cmd[4], die_select;
 	
 	if(targetPage > pagesPerDie) {
 		die_select = 1;
@@ -534,26 +532,25 @@ void LittleFS_SPINAND::loadPage(uint32_t address)
 		wait(progtime);		
 	} 
 
-    cmd[0] = 0x13;   //Page Data Read
+	cmd[0] = 0x13;   //Page Data Read
 	//cmd[1] defined above
-    cmd[2] = targetPage >> 8; 
-    cmd[3] = targetPage;
+	cmd[2] = targetPage >> 8; 
+	cmd[3] = targetPage;
 
-   	port->beginTransaction(SPICONFIG_NAND);
+ 	port->beginTransaction(SPICONFIG_NAND);
 	digitalWrite(pin, LOW);
 	port->transfer(cmd, 4);
-    digitalWrite(pin, HIGH);
-    port->endTransaction();
-   
+	digitalWrite(pin, HIGH);
+	port->endTransaction();
 }
-  
+
 uint8_t LittleFS_SPINAND::readECC(uint32_t targetPage, uint8_t *data, int length)
 {
 
-    uint16_t column = LINEAR_TO_COLUMNECC(targetPage*eccSize);
+	uint16_t column = LINEAR_TO_COLUMNECC(targetPage*eccSize);
 	targetPage = LINEAR_TO_PAGEECC(targetPage*eccSize);
 	
-    uint8_t cmd[4], die_select;
+	uint8_t cmd[4], die_select;
 	
 	if(targetPage > pagesPerDie) {
 		die_select = 1;
@@ -576,16 +573,16 @@ uint8_t LittleFS_SPINAND::readECC(uint32_t targetPage, uint8_t *data, int length
 		cmd[1] = 0;						//dummy block for write is 0.
 	} 
 
-    cmd[0] = 0x13;   //Page Data Read
+	cmd[0] = 0x13;   //Page Data Read
 	//cmd[1] defined above
-    cmd[2] = targetPage >> 8; 
-    cmd[3] = targetPage;
+	cmd[2] = targetPage >> 8; 
+	cmd[3] = targetPage;
 
-   	port->beginTransaction(SPICONFIG_NAND);
+ 	port->beginTransaction(SPICONFIG_NAND);
 	digitalWrite(pin, LOW);
 	port->transfer(cmd, 4);
-    digitalWrite(pin, HIGH);
-    port->endTransaction();
+	digitalWrite(pin, HIGH);
+	port->endTransaction();
 
 	const uint32_t progtime = ((const struct chipinfo *)hwinfo)->progtime;
 	wait(progtime);
@@ -595,13 +592,13 @@ uint8_t LittleFS_SPINAND::readECC(uint32_t targetPage, uint8_t *data, int length
 	cmd1[1] = 0; 
 	cmd1[2] = column >> 8;
 	cmd1[3] = column;
-    
-  	port->beginTransaction(SPICONFIG_NAND);
+
+	port->beginTransaction(SPICONFIG_NAND);
 	digitalWrite(pin, LOW);
 	port->transfer(cmd1, 4);
 	port->transfer(data, length);
-    digitalWrite(pin, HIGH);
-    port->endTransaction();
+	digitalWrite(pin, HIGH);
+	port->endTransaction();
 
 	wait(progtime);
 
@@ -628,43 +625,42 @@ uint8_t LittleFS_SPINAND::readECC(uint32_t targetPage, uint8_t *data, int length
 
 void LittleFS_SPINAND::readBBLUT(uint16_t *LBA, uint16_t *PBA, uint8_t *linkStatus)
 {
-    //uint16_t LBA, PBA;
-    //uint16_t temp;
-    //uint16_t openEntries = 0;
+	//uint16_t LBA, PBA;
+	//uint16_t temp;
+	//uint16_t openEntries = 0;
 	//BBLUT_TABLE_ENTRY_COUNT     20
 	//BBLUT_TABLE_ENTRY_SIZE      4  // in bytes
 	
-    uint8_t data[20 * 4];
+	uint8_t data[20 * 4];
 
-  	port->beginTransaction(SPICONFIG_NAND);
+	port->beginTransaction(SPICONFIG_NAND);
 	digitalWrite(pin, LOW);
 	port->transfer(0xA5);  //Read BBM_LUT 0xA5
 	port->transfer(0);
-  for(uint32_t i = 0; i < (80); i++) {
-    data[i] = 	port->transfer(0);
-  }  
-    digitalWrite(pin, HIGH);
-    port->endTransaction();
+	for(uint32_t i = 0; i < (80); i++) {
+		data[i] = port->transfer(0);
+	}  
+	digitalWrite(pin, HIGH);
+	port->endTransaction();
 
 	//See page 33 of the reference manual for W25N01G
-    //Serial.println("Status of the links");
-    for(int i = 0, offset = 0 ; i < 20 ; i++, offset += 4) {
-      LBA[i] = data[offset+ 0] << 8 | data[offset+ 1];
-      PBA[i] =  data[offset+ 2] << 8 | data[offset+ 3]; 
-      
-	  if (LBA[i] == 0x0000) {
-		linkStatus[i] = 0;
-        //openEntries++;
-      } else  {
-        //Serial.printf("\tEntry: %d: Logical BA - %d, Physical BA - %d\n", i, LBA[i], PBA[i]);
-        linkStatus[i] = (uint8_t) (LBA[i] >> 14);
-        //if(linkStatus[i] == 3) Serial.println("\t    This link is enabled and its a Valid Link!");
-        //if(linkStatus[i] == 4) Serial.println("\t    This link was enabled but its not valid any more!");
-        //if(linkStatus[i] == 1) Serial.println("\t    Not Applicable!");
-      }
-	  
-    }
-    //Serial.printf("OpenEntries: %d\n", openEntries);
+	//Serial.println("Status of the links");
+	for(int i = 0, offset = 0 ; i < 20 ; i++, offset += 4) {
+		LBA[i] = data[offset+ 0] << 8 | data[offset+ 1];
+		PBA[i] =  data[offset+ 2] << 8 | data[offset+ 3]; 
+
+		if (LBA[i] == 0x0000) {
+			linkStatus[i] = 0;
+			//openEntries++;
+		} else {
+			//Serial.printf("\tEntry: %d: Logical BA - %d, Physical BA - %d\n", i, LBA[i], PBA[i]);
+			linkStatus[i] = (uint8_t) (LBA[i] >> 14);
+			//if(linkStatus[i] == 3) Serial.println("\t    This link is enabled and its a Valid Link!");
+			//if(linkStatus[i] == 4) Serial.println("\t    This link was enabled but its not valid any more!");
+			//if(linkStatus[i] == 1) Serial.println("\t    Not Applicable!");
+		}
+	}
+	//Serial.printf("OpenEntries: %d\n", openEntries);
 }
 
 uint8_t LittleFS_SPINAND::addBBLUT(uint32_t block_address)
@@ -733,14 +729,14 @@ uint8_t LittleFS_SPINAND::addBBLUT(uint32_t block_address)
 	//port->beginTransaction(SPICONFIG_NAND);
 	//digitalWrite(pin, LOW);
 	//port->transfer(cmd, 5);
-    //digitalWrite(pin, HIGH);
-    //port->endTransaction();
+	//digitalWrite(pin, HIGH);
+	//port->endTransaction();
 	#endif
 	const uint32_t progtime = ((const struct chipinfo *)hwinfo)->progtime;
 	wait(progtime);
 	
   }
-	return 0;
+  return 0;
 }
 
 void LittleFS_SPINAND::deviceReset()
@@ -748,20 +744,19 @@ void LittleFS_SPINAND::deviceReset()
 
 	port->beginTransaction(SPICONFIG_NAND);
 	digitalWrite(pin, LOW);
-    port->transfer(0xFF);
-    digitalWrite(pin, HIGH);
-    port->endTransaction();
-  
-  wait(500000);
+	port->transfer(0xFF);
+	digitalWrite(pin, HIGH);
+	port->endTransaction();
 
-  // No protection, WP-E off, WP-E prevents use of IO2.  PROT_REG(0xAO), PROT_CLEAR(0)
-  writeStatusRegister(0xA0, 0);
-  readStatusRegister(0xA0, false);
+	wait(500000);
 
-  // Buffered read mode (BUF = 1), ECC enabled (ECC = 1), 0xB0(0xB0), ECC_ENABLE((1 << 4)), ReadMode((1 << 3))
-  writeStatusRegister(0xB0, (1 << 4) | (1 << 3));
-  readStatusRegister(0xB0, false);
+	// No protection, WP-E off, WP-E prevents use of IO2.  PROT_REG(0xAO), PROT_CLEAR(0)
+	writeStatusRegister(0xA0, 0);
+	readStatusRegister(0xA0, false);
 
+	// Buffered read mode (BUF = 1), ECC enabled (ECC = 1), 0xB0(0xB0), ECC_ENABLE((1 << 4)), ReadMode((1 << 3))
+	writeStatusRegister(0xB0, (1 << 4) | (1 << 3));
+	readStatusRegister(0xB0, false);
 }
 
 bool LittleFS_SPINAND::lowLevelFormat(char progressChar, Print* pr)
@@ -925,10 +920,10 @@ bool LittleFS_QPINAND::begin() {
 	uint8_t buf[5] = {0, 0, 0, 0, 0};
 	
 	//if following is uncommented NANDs wont work?
-  //FLEXSPI2_FLSHA2CR1 = FLEXSPI_FLSHCR1_CSINTERVAL(2)  //minimum interval between flash device Chip selection deassertion and flash device Chip selection assertion.
-   //                    | FLEXSPI_FLSHCR1_CAS(11)						     //sets up 14 bit column address
-   //                    | FLEXSPI_FLSHCR1_TCSH(3)                           //Serial Flash CS Hold time.
-   //                    | FLEXSPI_FLSHCR1_TCSS(3);                          //Serial Flash CS setup time
+	//FLEXSPI2_FLSHA2CR1 = FLEXSPI_FLSHCR1_CSINTERVAL(2)  //minimum interval between flash device Chip selection deassertion and flash device Chip selection assertion.
+	//                    | FLEXSPI_FLSHCR1_CAS(11)						     //sets up 14 bit column address
+	//                    | FLEXSPI_FLSHCR1_TCSH(3)                           //Serial Flash CS Hold time.
+	//                    | FLEXSPI_FLSHCR1_TCSS(3);                          //Serial Flash CS setup time
 
  //Reset clock to 102.85714 Mhz
 /*	  CCM_CCGR7 |= CCM_CCGR7_FLEXSPI2(CCM_CCGR_OFF);
@@ -936,7 +931,7 @@ bool LittleFS_QPINAND::begin() {
 		  | CCM_CBCMR_FLEXSPI2_PODF(6) | CCM_CBCMR_FLEXSPI2_CLK_SEL(1); 
 	  CCM_CCGR7 |= CCM_CCGR7_FLEXSPI2(CCM_CCGR_ON);
 */
-  	FLEXSPI2_LUTKEY = FLEXSPI_LUTKEY_VALUE;
+	FLEXSPI2_LUTKEY = FLEXSPI_LUTKEY_VALUE;
 	FLEXSPI2_LUTCR = FLEXSPI_LUTCR_UNLOCK;
 	
 	// cmd index 8 = read ID bytes
@@ -988,45 +983,44 @@ bool LittleFS_QPINAND::begin() {
 	config.name_max = LFS_NAME_MAX;
 	configured = true;
 	
-  // cmd index 8 = read Status register
-  // set in function readStatusRegister(uint8_t reg, bool dump)
-  // cmd index 8 = write Status register
-  // see function writeStatusRegister(uint8_t reg, uint8_t data)
+	// cmd index 8 = read Status register
+	// set in function readStatusRegister(uint8_t reg, bool dump)
+	// cmd index 8 = write Status register
+	// see function writeStatusRegister(uint8_t reg, uint8_t data)
 
-  //cmd index 9 - WG reset, see function deviceReset()
-  FLEXSPI2_LUT36 = LUT0(CMD_SDR, PINS1, 0xFF);  //0xFF Device Reset
+	//cmd index 9 - WG reset, see function deviceReset()
+	FLEXSPI2_LUT36 = LUT0(CMD_SDR, PINS1, 0xFF);  //0xFF Device Reset
 
-  //cmd index 10 - read BBLUT
-  // cmd 11 index write enable cmd
-  // see function writeEnable()
-  //cmd 12 Command based on PageAddress
-  // see functions:
-  // eraseSector(uint32_t addr) and
-  // readBytes(uint32_t address, uint8_t *data, int length)
-  //cmd 13 program load Data
-  // see functions:
-  // programDataLoad(uint16_t columnAddress, const uint8_t *data, int length)
-  // and
-  // randomProgramDataLoad(uint16_t columnAddress, const uint8_t *data, int length)
+	//cmd index 10 - read BBLUT
+	// cmd 11 index write enable cmd
+	// see function writeEnable()
+	//cmd 12 Command based on PageAddress
+	// see functions:
+	// eraseSector(uint32_t addr) and
+	// readBytes(uint32_t address, uint8_t *data, int length)
+	//cmd 13 program load Data
+	// see functions:
+	// programDataLoad(uint16_t columnAddress, const uint8_t *data, int length)
+	// and
+	// randomProgramDataLoad(uint16_t columnAddress, const uint8_t *data, int length)
 
-  
-  //cmd 14 program read Data -- reserved.  0xEB FAST_READ_QUAD_IO
-  FLEXSPI2_LUT56 = LUT0(CMD_SDR, PINS1, 0xEB) | LUT1(CADDR_SDR, PINS4, 0x10);  
-  FLEXSPI2_LUT57 = LUT0(DUMMY_SDR, PINS4, 4) | LUT1(READ_SDR, PINS4, 1);
 
-  //cmd 15 - program execute - 0x10
-  FLEXSPI2_LUT60 = LUT0(CMD_SDR, PINS1, 0x10) | LUT1(ADDR_SDR, PINS1, 0x18);
-    
+	//cmd 14 program read Data -- reserved.  0xEB FAST_READ_QUAD_IO
+	FLEXSPI2_LUT56 = LUT0(CMD_SDR, PINS1, 0xEB) | LUT1(CADDR_SDR, PINS4, 0x10);  
+	FLEXSPI2_LUT57 = LUT0(DUMMY_SDR, PINS4, 4) | LUT1(READ_SDR, PINS4, 1);
 
-  // No protection, WP-E off, WP-E prevents use of IO2.  PROT_REG(0xAO), PROT_CLEAR(0)
-  writeStatusRegister(0xA0, 0);
-  readStatusRegister(0xA0, false);
+	//cmd 15 - program execute - 0x10
+	FLEXSPI2_LUT60 = LUT0(CMD_SDR, PINS1, 0x10) | LUT1(ADDR_SDR, PINS1, 0x18);
 
-  // Buffered read mode (BUF = 1), ECC enabled (ECC = 1), 0xB0(0xB0), ECC_ENABLE((1 << 4)), ReadMode((1 << 3))
-  //writeStatusRegister(0xB0, (1 << 3));
-  writeStatusRegister(0xB0, (1 << 4) | (1 << 3));
-  readStatusRegister(0xB0, false);
-  
+	// No protection, WP-E off, WP-E prevents use of IO2.  PROT_REG(0xAO), PROT_CLEAR(0)
+	writeStatusRegister(0xA0, 0);
+	readStatusRegister(0xA0, false);
+
+	// Buffered read mode (BUF = 1), ECC enabled (ECC = 1), 0xB0(0xB0), ECC_ENABLE((1 << 4)), ReadMode((1 << 3))
+	//writeStatusRegister(0xB0, (1 << 3));
+	writeStatusRegister(0xB0, (1 << 4) | (1 << 3));
+	readStatusRegister(0xB0, false);
+
 	//Serial.println("attempting to mount existing media");
 	if (lfs_mount(&lfs, &config) < 0) {
 		Serial.println("couldn't mount media, attemping to format");
@@ -1080,11 +1074,11 @@ int LittleFS_QPINAND::read(lfs_block_t block, lfs_off_t offset, void *buf, lfs_s
 	}
 	
 	
-    flexspi2_ip_command(12, 0x00800000 + newTargetPage);   // Page data read Lut
-	const uint32_t progtime = ((const struct chipinfo *)hwinfo)->progtime;
-	wait(progtime);
+	flexspi2_ip_command(12, 0x00800000 + newTargetPage);   // Page data read Lut
+		const uint32_t progtime = ((const struct chipinfo *)hwinfo)->progtime;
+		wait(progtime);
 
-    currentPageRead = targetPage;
+	currentPageRead = targetPage;
   }
 
   uint16_t column = LINEAR_TO_COLUMN(address);
@@ -1100,14 +1094,14 @@ int LittleFS_QPINAND::read(lfs_block_t block, lfs_off_t offset, void *buf, lfs_s
 
 
   switch (eccCode) {
-    case 0: // Successful read, no ECC correction
-      break;
-    case 1: // Successful read with ECC correction
-      //Serial.printf("Successful read with ECC correction (addr, code): %x, %x\n", addr, eccCode);
-    case 2: // Uncorrectable ECC in a single page
-      //Serial.printf("Uncorrectable ECC in a single page (addr, code): %x, %x\n", address, eccCode);
-    case 3: // Uncorrectable ECC in multiple pages
-      //Serial.printf("Uncorrectable ECC in a single page (addr, code): %x, %x\n", address, eccCode);
+	case 0: // Successful read, no ECC correction
+	break;
+	case 1: // Successful read with ECC correction
+	  //Serial.printf("Successful read with ECC correction (addr, code): %x, %x\n", addr, eccCode);
+	case 2: // Uncorrectable ECC in a single page
+	  //Serial.printf("Uncorrectable ECC in a single page (addr, code): %x, %x\n", address, eccCode);
+	case 3: // Uncorrectable ECC in multiple pages
+	  //Serial.printf("Uncorrectable ECC in a single page (addr, code): %x, %x\n", address, eccCode);
 	  addBBLUT(LINEAR_TO_BLOCK(address));
 	  //deviceReset();
 	  break;
@@ -1196,42 +1190,40 @@ int LittleFS_QPINAND::erase(lfs_block_t block)
  
 uint8_t LittleFS_QPINAND::readStatusRegister(uint16_t reg, bool dump)
 {
-  uint8_t val;
+	uint8_t val;
 
-  // cmd index 8 = read Status register #1 SPI, 0x05
-  FLEXSPI2_LUT32 = LUT0(CMD_SDR, PINS1, 0x05) | LUT1(CMD_SDR, PINS1, reg);  
-  FLEXSPI2_LUT33 = LUT0(READ_SDR, PINS1, 1);
+	// cmd index 8 = read Status register #1 SPI, 0x05
+	FLEXSPI2_LUT32 = LUT0(CMD_SDR, PINS1, 0x05) | LUT1(CMD_SDR, PINS1, reg);  
+	FLEXSPI2_LUT33 = LUT0(READ_SDR, PINS1, 1);
 
-  flexspi2_ip_read(8, 0x00800000, &val, 1 );
+	flexspi2_ip_read(8, 0x00800000, &val, 1 );
 
-  if (dump) {
-    //Serial.printf("Status of reg 0x%x: \n", reg);
-    //Serial.printf("(HEX: ) 0x%02X, (Binary: )", val);
-    //Serial.println(val, BIN);
-    //Serial.println();
-  }
+	if (dump) {
+		//Serial.printf("Status of reg 0x%x: \n", reg);
+		//Serial.printf("(HEX: ) 0x%02X, (Binary: )", val);
+		//Serial.println(val, BIN);
+		//Serial.println();
+	}
 
-  return val;
-
+	return val;
 }
 
 void LittleFS_QPINAND::writeStatusRegister(uint8_t reg, uint8_t data)
 {
-  uint8_t buf[1];
-  buf[0] = data;
-  // cmd index 8 = write Status register, 0x01
-  FLEXSPI2_LUT32 = LUT0(CMD_SDR, PINS1, 0x01) | LUT1(CMD_SDR, PINS1, reg);
-  FLEXSPI2_LUT33 = LUT0(WRITE_SDR, PINS1, 1);
+	uint8_t buf[1];
+	buf[0] = data;
+	// cmd index 8 = write Status register, 0x01
+	FLEXSPI2_LUT32 = LUT0(CMD_SDR, PINS1, 0x01) | LUT1(CMD_SDR, PINS1, reg);
+	FLEXSPI2_LUT33 = LUT0(WRITE_SDR, PINS1, 1);
 
-  flexspi2_ip_write(8, 0, buf, 1);
-
+	flexspi2_ip_write(8, 0, buf, 1);
 }
 
 
 bool LittleFS_QPINAND::isReady()
 {
-  uint8_t status = readStatusRegister(0xC0, false);
-  return ((status & (1 << 0)) == 0);
+	uint8_t status = readStatusRegister(0xC0, false);
+	return ((status & (1 << 0)) == 0);
 }
 
 int LittleFS_QPINAND::wait(uint32_t microseconds)
@@ -1253,15 +1245,15 @@ int LittleFS_QPINAND::wait(uint32_t microseconds)
  */
 bool LittleFS_QPINAND::writeEnable()
 {
-  uint8_t status;
-  FLEXSPI2_LUT44 = LUT0(CMD_SDR, PINS1, 0x06);  //Write enable 0x06
-  flexspi2_ip_command(11, 0x00800000); //Write Enable
-  // Assume that we're about to do some writing, so the device is just about to become busy
-  const uint32_t progtime = ((const struct chipinfo *)hwinfo)->progtime;
-  wait(progtime);
-  
-  status = readStatusRegister(0xC0, false);
-  return status & (0x02);
+	uint8_t status;
+	FLEXSPI2_LUT44 = LUT0(CMD_SDR, PINS1, 0x06);  //Write enable 0x06
+	flexspi2_ip_command(11, 0x00800000); //Write Enable
+	// Assume that we're about to do some writing, so the device is just about to become busy
+	const uint32_t progtime = ((const struct chipinfo *)hwinfo)->progtime;
+	wait(progtime);
+
+	status = readStatusRegister(0xC0, false);
+	return status & (0x02);
 }
 
 
@@ -1271,10 +1263,8 @@ bool LittleFS_QPINAND::writeEnable()
 void LittleFS_QPINAND::eraseSector(uint32_t address)
 {
 
-
-
-  uint32_t pageAddr = LINEAR_TO_PAGE(address) ;
-  //if(pageAddr > sectorSize) pageAddr -= sectorSize;
+	uint32_t pageAddr = LINEAR_TO_PAGE(address) ;
+	//if(pageAddr > sectorSize) pageAddr -= sectorSize;
 
 	uint32_t newTargetPage;
 	uint8_t val;
@@ -1317,16 +1307,15 @@ void LittleFS_QPINAND::eraseSector(uint32_t address)
 
 uint8_t LittleFS_QPINAND::readECC(uint32_t targetPage, uint8_t *buf, int size)
 {
+	uint16_t column = LINEAR_TO_COLUMNECC(targetPage*eccSize);
+	targetPage = LINEAR_TO_PAGEECC(targetPage*eccSize);
 
-  uint16_t column = LINEAR_TO_COLUMNECC(targetPage*eccSize);
-  targetPage = LINEAR_TO_PAGEECC(targetPage*eccSize);
+	uint32_t newTargetPage;
+	uint8_t val;
 
-  uint32_t newTargetPage;
-  uint8_t val;
-  
-  //Page Data Read - 0x13
-  FLEXSPI2_LUT48 = LUT0(CMD_SDR, PINS1, 0x13) | LUT1(ADDR_SDR, PINS1, 0x18);
-  
+	//Page Data Read - 0x13
+	FLEXSPI2_LUT48 = LUT0(CMD_SDR, PINS1, 0x13) | LUT1(ADDR_SDR, PINS1, 0x18);
+
 	//need to create LUT for W25M02 Die Select command, 
 	if(deviceID == W25M02) {
 		if(targetPage >= pagesPerDie ) {
@@ -1350,19 +1339,19 @@ uint8_t LittleFS_QPINAND::readECC(uint32_t targetPage, uint8_t *buf, int size)
 	}
 	
 	
-    flexspi2_ip_command(12, 0x00800000 + newTargetPage);   // Page data read Lut
-	const uint32_t progtime = ((const struct chipinfo *)hwinfo)->progtime;
-	wait(progtime);
+	flexspi2_ip_command(12, 0x00800000 + newTargetPage);   // Page data read Lut
+		const uint32_t progtime = ((const struct chipinfo *)hwinfo)->progtime;
+		wait(progtime);
 
-    currentPageRead = targetPage;
+	currentPageRead = targetPage;
 
-  flexspi2_ip_read(14, 0x00800000 + column, buf, size);
-  
-  // Check ECC
-  uint8_t statReg = readStatusRegister(0xC0, false);
-  uint8_t eccCode = (((statReg) & ((1 << 5)|(1 << 4))) >> 4);
-  
-	  switch (eccCode) {
+	flexspi2_ip_read(14, 0x00800000 + column, buf, size);
+
+	// Check ECC
+	uint8_t statReg = readStatusRegister(0xC0, false);
+	uint8_t eccCode = (((statReg) & ((1 << 5)|(1 << 4))) >> 4);
+
+	switch (eccCode) {
 	  case 0: // Successful read, no ECC correction
 		break;
 	  case 1: // Successful read with ECC correction
@@ -1374,45 +1363,42 @@ uint8_t LittleFS_QPINAND::readECC(uint32_t targetPage, uint8_t *buf, int size)
 		//deviceReset();
 		break;
 	}
-  
-  
-  return eccCode;
+	return eccCode;
 }
 
 void LittleFS_QPINAND::readBBLUT(uint16_t *LBA, uint16_t *PBA, uint8_t *linkStatus)
 {
-    //uint16_t LBA, PBA;
-    //uint16_t linkStatus[20];
-    //uint16_t openEntries = 0;
+	//uint16_t LBA, PBA;
+	//uint16_t linkStatus[20];
+	//uint16_t openEntries = 0;
 	//BBLUT_TABLE_ENTRY_COUNT     20
 	//BBLUT_TABLE_ENTRY_SIZE      4  // in bytes
 	
-    uint8_t data[20 * 4];
+	uint8_t data[20 * 4];
 
-    FLEXSPI2_LUT40 = LUT0(CMD_SDR, PINS1, 0xA5) | LUT1(DUMMY_SDR, 8, 1);  //Read BBM_LUT 0xA5
-    FLEXSPI2_LUT41 = LUT0(READ_SDR, PINS1, 1);
-    flexspi2_ip_read(10, 0x00800000, data, sizeof(data));
+	FLEXSPI2_LUT40 = LUT0(CMD_SDR, PINS1, 0xA5) | LUT1(DUMMY_SDR, 8, 1);  //Read BBM_LUT 0xA5
+	FLEXSPI2_LUT41 = LUT0(READ_SDR, PINS1, 1);
+	flexspi2_ip_read(10, 0x00800000, data, sizeof(data));
 
 
 	//See page 33 of the reference manual for W25N01G
-    //Serial.println("Status of the links");
-    for(int i = 0, offset = 0 ; i < 20 ; i++, offset += 4) {
-      LBA[i] = data[offset+ 0] << 8 | data[offset+ 1];
-      PBA[i] =  data[offset+ 2] << 8 | data[offset+ 3]; 
-      
-	  if (LBA[i] == 0x0000) {
-		linkStatus[i] = 0;
-        //openEntries++;
-      } else  {
-        //Serial.printf("\tEntry: %d: Logical BA - %d, Physical BA - %d\n", i, LBA[i], PBA[i]);
-        linkStatus[i] = (uint8_t) (LBA[i] >> 14);
-        //if(linkStatus[i] == 3) Serial.println("\t    This link is enabled and its a Valid Link!");
-        //if(linkStatus[i] == 4) Serial.println("\t    This link was enabled but its not valid any more!");
-        //if(linkStatus[i] == 1) Serial.println("\t    Not Applicable!");
-      }
-	  
-    }
-    //Serial.printf("OpenEntries: %d\n", openEntries);
+	//Serial.println("Status of the links");
+	for(int i = 0, offset = 0 ; i < 20 ; i++, offset += 4) {
+		LBA[i] = data[offset+ 0] << 8 | data[offset+ 1];
+		PBA[i] =  data[offset+ 2] << 8 | data[offset+ 3]; 
+
+		if (LBA[i] == 0x0000) {
+			linkStatus[i] = 0;
+			//openEntries++;
+		} else {
+			//Serial.printf("\tEntry: %d: Logical BA - %d, Physical BA - %d\n", i, LBA[i], PBA[i]);
+			linkStatus[i] = (uint8_t) (LBA[i] >> 14);
+			//if(linkStatus[i] == 3) Serial.println("\t    This link is enabled and its a Valid Link!");
+			//if(linkStatus[i] == 4) Serial.println("\t    This link was enabled but its not valid any more!");
+			//if(linkStatus[i] == 1) Serial.println("\t    Not Applicable!");
+		}
+	}
+	//Serial.printf("OpenEntries: %d\n", openEntries);
 }
 
 uint8_t LittleFS_QPINAND::addBBLUT(uint32_t block_address)
@@ -1476,31 +1462,30 @@ uint8_t LittleFS_QPINAND::addBBLUT(uint32_t block_address)
 	cmd[2] = lba >> 8;
 	cmd[3] = lba;
 	
-   //FLEXSPI2_LUT44 = LUT0(CMD_SDR, PINS1, 0xA1) | LUT0(WRITE_SDR, PINS1, 1);  
-   //flexspi2_ip_write(8, 0, cmd, 4);
+	//FLEXSPI2_LUT44 = LUT0(CMD_SDR, PINS1, 0xA1) | LUT0(WRITE_SDR, PINS1, 1);  
+	//flexspi2_ip_write(8, 0, cmd, 4);
 	#endif	
 	const uint32_t progtime = ((const struct chipinfo *)hwinfo)->progtime;
 	wait(progtime);
   }
-	return 0;
+  return 0;
 }
 
 void LittleFS_QPINAND::deviceReset()
 {
-  //cmd index 9 - WG reset, see function deviceReset()
-  FLEXSPI2_LUT36 = LUT0(CMD_SDR, PINS1, 0xFF);
-  flexspi2_ip_command(9, 0x00800000); //reset
+	//cmd index 9 - WG reset, see function deviceReset()
+	FLEXSPI2_LUT36 = LUT0(CMD_SDR, PINS1, 0xFF);
+	flexspi2_ip_command(9, 0x00800000); //reset
 
-  wait(500000);
+	wait(500000);
 
-  // No protection, WP-E off, WP-E prevents use of IO2.  PROT_REG(0xAO), PROT_CLEAR(0)
-  writeStatusRegister(0xA0, 0);
-  readStatusRegister(0xA0, false);
+	// No protection, WP-E off, WP-E prevents use of IO2.  PROT_REG(0xAO), PROT_CLEAR(0)
+	writeStatusRegister(0xA0, 0);
+	readStatusRegister(0xA0, false);
 
-  // Buffered read mode (BUF = 1), ECC enabled (ECC = 1), 0xB0(0xB0), ECC_ENABLE((1 << 4)), ReadMode((1 << 3))
-  writeStatusRegister(0xB0, (1 << 4) | (1 << 3));
-  readStatusRegister(0xB0, false);
-
+	// Buffered read mode (BUF = 1), ECC enabled (ECC = 1), 0xB0(0xB0), ECC_ENABLE((1 << 4)), ReadMode((1 << 3))
+	writeStatusRegister(0xB0, (1 << 4) | (1 << 3));
+	readStatusRegister(0xB0, false);
 }
 
 bool LittleFS_QPINAND::lowLevelFormat(char progressChar)

@@ -671,7 +671,7 @@ uint8_t LittleFS_SPINAND::addBBLUT(uint32_t block_address)
 	lutFull = readStatusRegister(0xC0, false);
 	
 	if(lutFull & (1 << 6)) {
-		Serial.printf("Lut Full!!!!");
+		//Serial.printf("Lut Full!!!!");
 		exit(1);
 	}
 	
@@ -682,32 +682,33 @@ uint8_t LittleFS_SPINAND::addBBLUT(uint32_t block_address)
 	
 	readBBLUT(LBA, PBA, LUT_STATUS);
 	
-	Serial.println("Status of the links");
+	//Serial.println("Status of the links");
 	for(uint16_t i = 0; i < 20; i++){
 		if(LUT_STATUS[i] > 0) {
-			Serial.printf("\tEntry: %d: Logical BA - %d, Physical BA - %d\n", i, LBA[i], PBA[i]);
+			//Serial.printf("\tEntry: %d: Logical BA - %d, Physical BA - %d\n", i, LBA[i], PBA[i]);
 			LUT_STATUS[i] = (uint8_t) (LBA[i] >> 14);
-			if(LUT_STATUS[i] == 3) Serial.println("\t    This link is enabled and its a Valid Link!");
-			if(LUT_STATUS[i] == 4) Serial.println("\t    This link was enabled but its not valid any more!");
-			if(LUT_STATUS[i] == 1) Serial.println("\t    Not Applicable!");
+			//if(LUT_STATUS[i] == 3) Serial.println("\t    This link is enabled and its a Valid Link!");
+			//if(LUT_STATUS[i] == 4) Serial.println("\t    This link was enabled but its not valid any more!");
+			//if(LUT_STATUS[i] == 1) Serial.println("\t    Not Applicable!");
 		} else {
 			openEntries++;
 		}
-	} Serial.printf("OpenEntries: %d\n", openEntries);
+	}
+	//Serial.printf("OpenEntries: %d\n", openEntries);
 	
 	
 	//Need to determine if the address is already in the list and what the first open entry is.
 	for(uint16_t i = 0; i < 20; i++){
 		if(LUT_STATUS[i] > 0) {
 			if(LBA[i] == block_address) {
-				Serial.printf("Address: %d, already in BBLUT!\n", block_address);
+				//Serial.printf("Address: %d, already in BBLUT!\n", block_address);
 				return 0;
 			}
 		}
 	}
 	
 	firstOpenEntry = 20 - openEntries;	
-	Serial.printf("First Open Entry: %d\n", firstOpenEntry);
+	//Serial.printf("First Open Entry: %d\n", firstOpenEntry);
 	
 	//Write BBLUT with next sequential block
 	#ifdef LATER
@@ -718,7 +719,7 @@ uint8_t LittleFS_SPINAND::addBBLUT(uint32_t block_address)
 	const uint32_t blocksize = ((const struct chipinfo *)hwinfo)->erasesize;
 	const uint32_t chipsize = ((const struct chipinfo *)hwinfo)->chipsize;
 	lba = LINEAR_TO_BLOCK((firstOpenEntry+1)*blocksize + chipsize);
-	Serial.printf("PBA: %d, LBA: %d\n", pba, lba);
+	//Serial.printf("PBA: %d, LBA: %d\n", pba, lba);
 	
 	cmd[0] = 0xA1;
 	cmd[1] = pba >> 8;
@@ -1020,14 +1021,14 @@ bool LittleFS_QPINAND::begin() {
 
 	//Serial.println("attempting to mount existing media");
 	if (lfs_mount(&lfs, &config) < 0) {
-		Serial.println("couldn't mount media, attemping to format");
+		//Serial.println("couldn't mount media, attemping to format");
 		if (lfs_format(&lfs, &config) < 0) {
-			Serial.println("format failed :(");
+			//Serial.println("format failed :(");
 			return false;
 		}
-		Serial.println("attempting to mount freshly formatted media");
+		//Serial.println("attempting to mount freshly formatted media");
 		if (lfs_mount(&lfs, &config) < 0) {
-			Serial.println("mount after format failed :(");
+			//Serial.println("mount after format failed :(");
 			return false;
 		}
 	}
@@ -1406,7 +1407,7 @@ uint8_t LittleFS_QPINAND::addBBLUT(uint32_t block_address)
 	lutFull = readStatusRegister(0xC0, false);
 	
 	if(lutFull & (1 << 6)) {
-		Serial.printf("Lut Full!!!!");
+		//Serial.printf("Lut Full!!!!");
 		exit(1);
 	}
 	
@@ -1417,32 +1418,33 @@ uint8_t LittleFS_QPINAND::addBBLUT(uint32_t block_address)
 	
 	readBBLUT(LBA, PBA, LUT_STATUS);
 	
-	Serial.println("Status of the links");
+	//Serial.println("Status of the links");
 	for(uint16_t i = 0; i < 20; i++){
 		if(LUT_STATUS[i] > 0) {
-			Serial.printf("\tEntry: %d: Logical BA - %d, Physical BA - %d\n", i, LBA[i], PBA[i]);
+			//Serial.printf("\tEntry: %d: Logical BA - %d, Physical BA - %d\n", i, LBA[i], PBA[i]);
 			LUT_STATUS[i] = (uint8_t) (LBA[i] >> 14);
-			if(LUT_STATUS[i] == 3) Serial.println("\t    This link is enabled and its a Valid Link!");
-			if(LUT_STATUS[i] == 4) Serial.println("\t    This link was enabled but its not valid any more!");
-			if(LUT_STATUS[i] == 1) Serial.println("\t    Not Applicable!");
+			//if(LUT_STATUS[i] == 3) Serial.println("\t    This link is enabled and its a Valid Link!");
+			//if(LUT_STATUS[i] == 4) Serial.println("\t    This link was enabled but its not valid any more!");
+			//if(LUT_STATUS[i] == 1) Serial.println("\t    Not Applicable!");
 		} else {
 			openEntries++;
 		}
-	} Serial.printf("OpenEntries: %d\n", openEntries);
+	}
+	//Serial.printf("OpenEntries: %d\n", openEntries);
 	
 	
 	//Need to determine if the address is already in the list and what the first open entry is.
 	for(uint16_t i = 0; i < 20; i++){
 		if(LUT_STATUS[i] > 0) {
 			if(LBA[i] == block_address) {
-				Serial.printf("Address: %d, already in BBLUT!\n", block_address);
+				//Serial.printf("Address: %d, already in BBLUT!\n", block_address);
 				return 0;
 			}
 		}
 	}
 	
 	firstOpenEntry = 20 - openEntries;	
-	Serial.printf("First Open Entry: %d\n", firstOpenEntry);
+	//Serial.printf("First Open Entry: %d\n", firstOpenEntry);
 	
 	//Write BBLUT with next sequential block
 	uint16_t pba, lba;
@@ -1451,7 +1453,7 @@ uint8_t LittleFS_QPINAND::addBBLUT(uint32_t block_address)
 	const uint32_t chipsize = ((const struct chipinfo *)hwinfo)->chipsize;
 	//lba = LINEAR_TO_BLOCK((firstOpenEntry+1)*config.block_size);
 	lba = LINEAR_TO_BLOCK((firstOpenEntry+1)*blocksize + chipsize);
-	Serial.printf("PBA: %d, LBA: %d\n", pba, lba);
+	//Serial.printf("PBA: %d, LBA: %d\n", pba, lba);
 	#ifdef LATER	
 	uint8_t cmd[4];
 	cmd[0] = pba >> 8;

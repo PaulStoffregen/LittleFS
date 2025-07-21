@@ -793,9 +793,6 @@ const char * LittleFS_SPINAND::getMediaName() {
 #define PINS1           FLEXSPI_LUT_NUM_PADS_1
 #define PINS4           FLEXSPI_LUT_NUM_PADS_4
 
-//static const uint32_t flashBaseAddr = 0x00800000;
-//static const uint32_t flashBaseAddr = 0x01000000u;
-
 
 static void flexspi2_ip_command(uint32_t index, uint32_t addr)
 {
@@ -937,7 +934,7 @@ bool LittleFS_QPINAND::begin() {
 	// cmd index 8 = read ID bytes
 	FLEXSPI2_LUT32 = LUT0(CMD_SDR, PINS1, 0x9F) | LUT1(READ_SDR, PINS1, 1);
 	FLEXSPI2_LUT33 = 0;
-	flexspi2_ip_read(8, 0x00800000, buf, 4);
+	flexspi2_ip_read(8, 0, buf, 4);
 
 	//Serial.printf("Flash ID: %02X %02X %02X\n", buf[1], buf[2], buf[3]);
 	const struct chipinfo *info = chip_lookup(buf+1);
@@ -1063,7 +1060,7 @@ int LittleFS_QPINAND::read(lfs_block_t block, lfs_off_t offset, void *buf, lfs_s
 		
 		// die select 0xc2
 		FLEXSPI2_LUT44 = LUT0(CMD_SDR, PINS1, 0xC2) | LUT1(WRITE_SDR, PINS1, 1); 
-		flexspi2_ip_write(11, 0x00800000, &val, 1);
+		flexspi2_ip_write(11, 0, &val, 1);
 	} else {
 		if(targetPage > pagesPerDie ) {
 			//targetPage -= sectorSize;
@@ -1074,7 +1071,7 @@ int LittleFS_QPINAND::read(lfs_block_t block, lfs_off_t offset, void *buf, lfs_s
 	}
 	
 	
-	flexspi2_ip_command(12, 0x00800000 + newTargetPage);   // Page data read Lut
+	flexspi2_ip_command(12, newTargetPage);   // Page data read Lut
 		const uint32_t progtime = ((const struct chipinfo *)hwinfo)->progtime;
 		wait(progtime);
 
@@ -1082,7 +1079,7 @@ int LittleFS_QPINAND::read(lfs_block_t block, lfs_off_t offset, void *buf, lfs_s
   }
 
   uint16_t column = LINEAR_TO_COLUMN(address);
-  flexspi2_ip_read(14, 0x00800000 + column, buf, size);
+  flexspi2_ip_read(14, column, buf, size);
   
 
   
@@ -1134,7 +1131,7 @@ int LittleFS_QPINAND::prog(lfs_block_t block, lfs_off_t offset, const void *buf,
 
 		// die select 0xc2
 		FLEXSPI2_LUT44 = LUT0(CMD_SDR, PINS1, 0xC2) | LUT1(WRITE_SDR, PINS1, 1); 
-		flexspi2_ip_write(11, 0x00800000, &val, 1);
+		flexspi2_ip_write(11, 0, &val, 1);
 		const uint32_t progtime = ((const struct chipinfo *)hwinfo)->progtime;
 		wait(progtime);
 	} else {
@@ -1151,7 +1148,7 @@ int LittleFS_QPINAND::prog(lfs_block_t block, lfs_off_t offset, const void *buf,
 	//Program Data Load - 0x32
 	FLEXSPI2_LUT52 = LUT0(CMD_SDR, PINS1, 0x32) | LUT1(CADDR_SDR, PINS1, 0x10);
 	FLEXSPI2_LUT53 = LUT0(WRITE_SDR, PINS4, 1);
-	flexspi2_ip_write(13, 0x00800000 + columnAddress, buf, size);
+	flexspi2_ip_write(13, columnAddress, buf, size);
 	const uint32_t progtime = ((const struct chipinfo *)hwinfo)->progtime;
 	wait(progtime);
 
@@ -1162,7 +1159,7 @@ int LittleFS_QPINAND::prog(lfs_block_t block, lfs_off_t offset, const void *buf,
 
 	//Serial.printf("PE pageAddress: %d\n", pageAddress);
 	//cmd 15 - program execute - 0x10
-	flexspi2_ip_command(15, 0x00800000 + newTargetPage);	
+	flexspi2_ip_command(15, newTargetPage);
 
 	return wait(progtime);
 }
@@ -1196,7 +1193,7 @@ uint8_t LittleFS_QPINAND::readStatusRegister(uint16_t reg, bool dump)
 	FLEXSPI2_LUT32 = LUT0(CMD_SDR, PINS1, 0x05) | LUT1(CMD_SDR, PINS1, reg);  
 	FLEXSPI2_LUT33 = LUT0(READ_SDR, PINS1, 1);
 
-	flexspi2_ip_read(8, 0x00800000, &val, 1 );
+	flexspi2_ip_read(8, 0, &val, 1 );
 
 	if (dump) {
 		//Serial.printf("Status of reg 0x%x: \n", reg);
@@ -1247,7 +1244,7 @@ bool LittleFS_QPINAND::writeEnable()
 {
 	uint8_t status;
 	FLEXSPI2_LUT44 = LUT0(CMD_SDR, PINS1, 0x06);  //Write enable 0x06
-	flexspi2_ip_command(11, 0x00800000); //Write Enable
+	flexspi2_ip_command(11, 0); //Write Enable
 	// Assume that we're about to do some writing, so the device is just about to become busy
 	const uint32_t progtime = ((const struct chipinfo *)hwinfo)->progtime;
 	wait(progtime);
@@ -1296,7 +1293,7 @@ void LittleFS_QPINAND::eraseSector(uint32_t address)
 	writeEnable();   //sets the WEL in Status Reg to 1 (bit 2)
 	// cmd index 12, Block Erase 0xD8
 	FLEXSPI2_LUT48 = LUT0(CMD_SDR, PINS1, 0xD8) | LUT1(ADDR_SDR, PINS1, 0x18);
-	flexspi2_ip_command(12, 0x00800000 + newTargetPage);
+	flexspi2_ip_command(12, newTargetPage);
 
 	//uint8_t status = readStatusRegister(0xC0, false );
 	//if ((status &  (1 << 2)) == 1)  //Status erase fail
@@ -1339,13 +1336,13 @@ uint8_t LittleFS_QPINAND::readECC(uint32_t targetPage, uint8_t *buf, int size)
 	}
 	
 	
-	flexspi2_ip_command(12, 0x00800000 + newTargetPage);   // Page data read Lut
+	flexspi2_ip_command(12, newTargetPage);   // Page data read Lut
 		const uint32_t progtime = ((const struct chipinfo *)hwinfo)->progtime;
 		wait(progtime);
 
 	currentPageRead = targetPage;
 
-	flexspi2_ip_read(14, 0x00800000 + column, buf, size);
+	flexspi2_ip_read(14, column, buf, size);
 
 	// Check ECC
 	uint8_t statReg = readStatusRegister(0xC0, false);
@@ -1378,7 +1375,7 @@ void LittleFS_QPINAND::readBBLUT(uint16_t *LBA, uint16_t *PBA, uint8_t *linkStat
 
 	FLEXSPI2_LUT40 = LUT0(CMD_SDR, PINS1, 0xA5) | LUT1(DUMMY_SDR, 8, 1);  //Read BBM_LUT 0xA5
 	FLEXSPI2_LUT41 = LUT0(READ_SDR, PINS1, 1);
-	flexspi2_ip_read(10, 0x00800000, data, sizeof(data));
+	flexspi2_ip_read(10, 0, data, sizeof(data));
 
 
 	//See page 33 of the reference manual for W25N01G
@@ -1475,7 +1472,7 @@ void LittleFS_QPINAND::deviceReset()
 {
 	//cmd index 9 - WG reset, see function deviceReset()
 	FLEXSPI2_LUT36 = LUT0(CMD_SDR, PINS1, 0xFF);
-	flexspi2_ip_command(9, 0x00800000); //reset
+	flexspi2_ip_command(9, 0); //reset
 
 	wait(500000);
 

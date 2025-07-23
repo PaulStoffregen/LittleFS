@@ -678,7 +678,9 @@ uint8_t LittleFS_SPINAND::addBBLUT(uint32_t block_address)
 	//Read BBLUT
 	uint16_t LBA[20], PBA[20], openEntries = 0;
 	uint8_t  LUT_STATUS[20];
+#ifdef LATER
 	uint8_t firstOpenEntry = 0;
+#endif  // LATER
 	
 	readBBLUT(LBA, PBA, LUT_STATUS);
 	
@@ -707,11 +709,11 @@ uint8_t LittleFS_SPINAND::addBBLUT(uint32_t block_address)
 		}
 	}
 	
+	#ifdef LATER
 	firstOpenEntry = 20 - openEntries;	
 	//Serial.printf("First Open Entry: %d\n", firstOpenEntry);
 	
 	//Write BBLUT with next sequential block
-	#ifdef LATER
 	uint8_t cmd[5];
 	
 	uint16_t pba, lba;
@@ -1414,7 +1416,9 @@ uint8_t LittleFS_QPINAND::addBBLUT(uint32_t block_address)
 	//Read BBLUT
 	uint16_t LBA[20], PBA[20], openEntries = 0;
 	uint8_t  LUT_STATUS[20];
+#ifdef LATER
 	uint8_t firstOpenEntry = 0;
+#endif  // LATER
 	
 	readBBLUT(LBA, PBA, LUT_STATUS);
 	
@@ -1443,6 +1447,7 @@ uint8_t LittleFS_QPINAND::addBBLUT(uint32_t block_address)
 		}
 	}
 	
+	#ifdef LATER
 	firstOpenEntry = 20 - openEntries;	
 	//Serial.printf("First Open Entry: %d\n", firstOpenEntry);
 	
@@ -1454,7 +1459,7 @@ uint8_t LittleFS_QPINAND::addBBLUT(uint32_t block_address)
 	//lba = LINEAR_TO_BLOCK((firstOpenEntry+1)*config.block_size);
 	lba = LINEAR_TO_BLOCK((firstOpenEntry+1)*blocksize + chipsize);
 	//Serial.printf("PBA: %d, LBA: %d\n", pba, lba);
-	#ifdef LATER	
+
 	uint8_t cmd[4];
 	cmd[0] = pba >> 8;
 	cmd[1] = pba;

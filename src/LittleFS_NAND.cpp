@@ -678,7 +678,7 @@ uint8_t LittleFS_SPINAND::addBBLUT(uint32_t block_address)
 	//Read BBLUT
 	uint16_t LBA[20], PBA[20], openEntries = 0;
 	uint8_t  LUT_STATUS[20];
-	uint8_t firstOpenEntry = 0;
+	//uint8_t firstOpenEntry = 0;
 	
 	readBBLUT(LBA, PBA, LUT_STATUS);
 	
@@ -707,11 +707,11 @@ uint8_t LittleFS_SPINAND::addBBLUT(uint32_t block_address)
 		}
 	}
 	
-	firstOpenEntry = 20 - openEntries;	
+	//firstOpenEntry = 20 - openEntries;
 	//Serial.printf("First Open Entry: %d\n", firstOpenEntry);
 	
 	//Write BBLUT with next sequential block
-	#ifdef LATER
+	/* #ifdef LATER
 	uint8_t cmd[5];
 	
 	uint16_t pba, lba;
@@ -732,7 +732,7 @@ uint8_t LittleFS_SPINAND::addBBLUT(uint32_t block_address)
 	//port->transfer(cmd, 5);
 	//digitalWrite(pin, HIGH);
 	//port->endTransaction();
-	#endif
+	#endif */
 	const uint32_t progtime = ((const struct nand_chipinfo *)hwinfo)->progtime;
 	wait(progtime);
 	
@@ -1414,7 +1414,7 @@ uint8_t LittleFS_QPINAND::addBBLUT(uint32_t block_address)
 	//Read BBLUT
 	uint16_t LBA[20], PBA[20], openEntries = 0;
 	uint8_t  LUT_STATUS[20];
-	uint8_t firstOpenEntry = 0;
+	//uint8_t firstOpenEntry = 0;
 	
 	readBBLUT(LBA, PBA, LUT_STATUS);
 	
@@ -1443,18 +1443,18 @@ uint8_t LittleFS_QPINAND::addBBLUT(uint32_t block_address)
 		}
 	}
 	
-	firstOpenEntry = 20 - openEntries;	
+	//firstOpenEntry = 20 - openEntries;	
 	//Serial.printf("First Open Entry: %d\n", firstOpenEntry);
 	
+	/* #ifdef LATER
 	//Write BBLUT with next sequential block
-	uint16_t pba, lba;
-	pba = block_address;
+	//uint16_t pba, lba;
+	//pba = block_address;
 	const uint32_t blocksize = ((const struct nand_chipinfo *)hwinfo)->erasesize;
 	const uint32_t chipsize = ((const struct nand_chipinfo *)hwinfo)->chipsize;
 	//lba = LINEAR_TO_BLOCK((firstOpenEntry+1)*config.block_size);
 	lba = LINEAR_TO_BLOCK((firstOpenEntry+1)*blocksize + chipsize);
 	//Serial.printf("PBA: %d, LBA: %d\n", pba, lba);
-	#ifdef LATER	
 	uint8_t cmd[4];
 	cmd[0] = pba >> 8;
 	cmd[1] = pba;
@@ -1463,7 +1463,7 @@ uint8_t LittleFS_QPINAND::addBBLUT(uint32_t block_address)
 	
 	//FLEXSPI2_LUT44 = LUT0(CMD_SDR, PINS1, 0xA1) | LUT0(WRITE_SDR, PINS1, 1);  
 	//flexspi2_ip_write(8, 0, cmd, 4);
-	#endif	
+	#endif	*/
 	const uint32_t progtime = ((const struct nand_chipinfo *)hwinfo)->progtime;
 	wait(progtime);
   }
